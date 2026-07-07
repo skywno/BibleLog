@@ -1,0 +1,701 @@
+openapi: 3.1.0
+info:
+  title: BibleLog API
+  version: 0.1.0
+  description: |
+    BibleLog 백엔드 API. 성경 본문을 제공하지 않으며, 읽기 기록·묵상·커뮤니티·AI 동반자를 다룹니다.
+    AI 엔드포인트는 서버 측 provider(OpenAI, Anthropic 등)를 추상화하며, 클라이언트는 단일 인터페이스만 사용합니다.
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: auth
+    description: OAuth 로그인 및 세션
+  - name: users
+    description: 프로필
+  - name: reading
+    description: 성경 읽기 기록 및 진행률
+  - name: journal
+    description: 묵상 노트
+  - name: feed
+    description: 커뮤니티 피드
+  - name: ai
+    description: AI 영적 동반자 (provider-agnostic)
+
+paths:
+  /auth/{provider}/authorize:
+    get:
+      tags: [auth]
+      operationId: getOAuthAuthorizeUrl
+      summary: OAuth 인증 URL 발급
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        '200':
+          description: 브라우저에서 열 OAuth URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthAuthorizeResponse'
+
+  /auth/{provider}/callback:
+    get:
+      tags: [auth]
+      operationId: handleOAuthCallback
+      summary: OAuth 콜백 (서버 처리)
+      parameters:
+        - $ref: '#/components/parameters/OAuthProvider'
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: JWT 발급
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+
+  /auth/token/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshAuthToken
+      summary: Refresh token으로 access token 갱신
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: 로그아웃 완료
+
+  /users/me:
+    get:
+      tags: [users]
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+    patch:
+      tags: [users]
+      operationId: updateCurrentUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserProfileRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /reading/records:
+    get:
+      tags: [reading]
+      operationId: listReadingRecords
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReadingRecord'
+    post:
+      tags: [reading]
+      operationId: createReadingRecord
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReadingRecordRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingRecord'
+
+  /reading/progress:
+    get:
+      tags: [reading]
+      operationId: getReadingProgress
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingProgress'
+
+  /reading/stats:
+    get:
+      tags: [reading]
+      operationId: getReadingStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadingStats'
+
+  /journal/notes:
+    get:
+      tags: [journal]
+      operationId: listJournalNotes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeditationNote'
+    post:
+      tags: [journal]
+      operationId: createJournalNote
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertJournalNoteRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeditationNote'
+
+  /journal/notes/{noteId}:
+    patch:
+      tags: [journal]
+      operationId: updateJournalNote
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertJournalNoteRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeditationNote'
+    delete:
+      tags: [journal]
+      operationId: deleteJournalNote
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      responses:
+        '204':
+          description: 삭제 완료
+
+  /feed:
+    get:
+      tags: [feed]
+      operationId: listFeed
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            $ref: '#/components/schemas/FeedFilter'
+        - name: sort
+          in: query
+          schema:
+            $ref: '#/components/schemas/FeedSort'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeedItem'
+
+  /feed/{noteId}/reactions:
+    post:
+      tags: [feed]
+      operationId: toggleReaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToggleReactionRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedItem'
+
+  /ai/conversations:
+    get:
+      tags: [ai]
+      operationId: listAiConversations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiConversationSummary'
+    post:
+      tags: [ai]
+      operationId: createAiConversation
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiConversationSummary'
+
+  /ai/conversations/{conversationId}/messages:
+    get:
+      tags: [ai]
+      operationId: listAiMessages
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiMessage'
+    post:
+      tags: [ai]
+      operationId: sendAiMessage
+      summary: AI 메시지 전송 (provider-agnostic)
+      description: |
+        서버가 설정된 LLM provider(OpenAI, Anthropic, Gemini 등)로 라우팅합니다.
+        클라이언트는 provider를 지정하지 않습니다.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendAiMessageRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendAiMessageResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    OAuthProvider:
+      name: provider
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [google, facebook]
+    NoteId:
+      name: noteId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    OAuthAuthorizeResponse:
+      type: object
+      required: [authorization_url, state]
+      properties:
+        authorization_url:
+          type: string
+          format: uri
+        state:
+          type: string
+
+    AuthTokenResponse:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    UserProfile:
+      type: object
+      required: [id, nickname, is_logged_in]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        bio:
+          type: string
+          default: ""
+        is_logged_in:
+          type: boolean
+          default: true
+
+    UpdateUserProfileRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+        bio:
+          type: string
+
+    BibleReference:
+      type: object
+      required: [book_id, start_chapter, start_verse, end_chapter, end_verse]
+      properties:
+        book_id:
+          type: integer
+          minimum: 1
+          maximum: 66
+        start_chapter:
+          type: integer
+        start_verse:
+          type: integer
+        end_chapter:
+          type: integer
+        end_verse:
+          type: integer
+
+    ReadingRecord:
+      type: object
+      required: [id, date, reference, minutes_read, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        reference:
+          $ref: '#/components/schemas/BibleReference'
+        minutes_read:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    CreateReadingRecordRequest:
+      type: object
+      required: [date, reference, minutes_read]
+      properties:
+        date:
+          type: string
+          format: date
+        reference:
+          $ref: '#/components/schemas/BibleReference'
+        minutes_read:
+          type: integer
+
+    ReadingProgress:
+      type: object
+      required: [overall, old_testament, new_testament, by_book]
+      properties:
+        overall:
+          type: number
+          format: float
+        old_testament:
+          type: number
+          format: float
+        new_testament:
+          type: number
+          format: float
+        by_book:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+
+    ReadingStats:
+      type: object
+      required: [total_minutes, average_daily_minutes, current_streak, best_streak]
+      properties:
+        total_minutes:
+          type: integer
+        average_daily_minutes:
+          type: number
+          format: float
+        current_streak:
+          type: integer
+        best_streak:
+          type: integer
+        monthly_reading_days:
+          type: object
+          additionalProperties:
+            type: integer
+
+    Emotion:
+      type: string
+      enum: [gratitude, joy, peace, sadness, moved]
+
+    NoteVisibility:
+      type: string
+      enum: [public, friends, small_group, church, private]
+
+    MeditationNote:
+      type: object
+      required: [id, content, visibility, author_id, author_name, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        prayer_topic:
+          type: string
+          nullable: true
+        emotion:
+          $ref: '#/components/schemas/Emotion'
+        reference:
+          $ref: '#/components/schemas/BibleReference'
+        visibility:
+          $ref: '#/components/schemas/NoteVisibility'
+        author_id:
+          type: string
+          format: uuid
+        author_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpsertJournalNoteRequest:
+      type: object
+      required: [content, visibility]
+      properties:
+        content:
+          type: string
+        prayer_topic:
+          type: string
+          nullable: true
+        emotion:
+          $ref: '#/components/schemas/Emotion'
+        reference:
+          $ref: '#/components/schemas/BibleReference'
+        visibility:
+          $ref: '#/components/schemas/NoteVisibility'
+
+    FaithReaction:
+      type: string
+      enum: [empathy, pray_together, amen, grace]
+
+    ReactionCount:
+      type: object
+      required: [type, count, reacted_by_me]
+      properties:
+        type:
+          $ref: '#/components/schemas/FaithReaction'
+        count:
+          type: integer
+        reacted_by_me:
+          type: boolean
+
+    FeedItem:
+      type: object
+      required: [note, reactions, comment_count]
+      properties:
+        note:
+          $ref: '#/components/schemas/MeditationNote'
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReactionCount'
+        comment_count:
+          type: integer
+
+    FeedFilter:
+      type: string
+      enum: [all, small_group, church, friends]
+      default: all
+
+    FeedSort:
+      type: string
+      enum: [latest, popular]
+      default: latest
+
+    ToggleReactionRequest:
+      type: object
+      required: [reaction]
+      properties:
+        reaction:
+          $ref: '#/components/schemas/FaithReaction'
+
+    AiConversationMode:
+      type: string
+      enum: [chat, prayer]
+      default: chat
+
+    AiConversationSummary:
+      type: object
+      required: [id, mode, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          $ref: '#/components/schemas/AiConversationMode'
+        title:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AiMessage:
+      type: object
+      required: [id, content, is_from_user, timestamp]
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        is_from_user:
+          type: boolean
+        timestamp:
+          type: string
+          format: date-time
+        suggested_reference:
+          $ref: '#/components/schemas/BibleReference'
+
+    SendAiMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        mode:
+          $ref: '#/components/schemas/AiConversationMode'
+
+    SendAiMessageResponse:
+      type: object
+      required: [user_message, assistant_message]
+      properties:
+        user_message:
+          $ref: '#/components/schemas/AiMessage'
+        assistant_message:
+          $ref: '#/components/schemas/AiMessage'
+        provider:
+          type: string
+          description: 서버가 사용한 LLM provider (디버깅/관측용, 예 openai, anthropic)
+          readOnly: true
+
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
