@@ -1,1 +1,0 @@
-"""BibleLog FastAPI backend."""

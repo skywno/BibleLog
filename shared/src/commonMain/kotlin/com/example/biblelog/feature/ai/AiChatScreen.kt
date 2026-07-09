@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.example.biblelog.data.BibleCatalog
+import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.di.LocalBibleLogRepository
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedTextField
@@ -105,9 +106,10 @@ fun AiChatScreen(modifier: Modifier = Modifier) {
                 text = "전송",
                 onClick = {
                     if (input.isBlank()) return@WantedButton
-                    val text = if (isPrayerMode) "함께 기도해 주세요: $input" else input
+                    val text = input
+                    val mode = if (isPrayerMode) AiConversationMode.PRAYER else AiConversationMode.CHAT
                     scope.launch {
-                        repository.sendAiMessage(text)
+                        repository.sendAiMessage(text, mode)
                         input = ""
                     }
                 },

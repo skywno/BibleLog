@@ -58,6 +58,12 @@ class BibleLogApiClient(
     suspend fun devLogin(email: String = "demo@biblelog.app"): ApiAuthTokenResponseDto =
         httpClient.post("/auth/dev/login?email=$email").body()
 
+    suspend fun logout() {
+        httpClient.post("/auth/logout") {
+            authHeader()
+        }
+    }
+
     suspend fun getOAuthAuthorizeUrl(
         provider: String,
         redirectUri: String,
@@ -95,7 +101,7 @@ class BibleLogApiClient(
         authorizedDelete("/journal/notes/$noteId")
     }
 
-    suspend fun listFeed(filter: String = "all", sort: String = "latest"): List<ApiFeedItemDto> =
+    suspend fun listFeed(filter: String = "all", sort: String = "latest"): ApiFeedPageResponseDto =
         authorizedGet("/feed?filter=$filter&sort=$sort")
 
     suspend fun toggleReaction(noteId: String, body: ApiToggleReactionRequestDto): ApiFeedItemDto =

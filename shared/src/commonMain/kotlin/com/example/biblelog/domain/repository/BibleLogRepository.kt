@@ -1,7 +1,10 @@
 package com.example.biblelog.domain.repository
 
+import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.domain.model.AiMessage
 import com.example.biblelog.domain.model.BibleReference
+import com.example.biblelog.domain.model.FeedFilter
+import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.Comment
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
@@ -47,9 +50,14 @@ interface BibleLogRepository {
 
     suspend fun addComment(noteId: String, content: String): Result<Comment>
 
+    suspend fun loadFeed(
+        filter: FeedFilter = FeedFilter.ALL,
+        sort: FeedSort = FeedSort.LATEST,
+    ): Result<Unit>
+
     suspend fun toggleReaction(noteId: String, reaction: FaithReaction): Result<Unit>
 
-    suspend fun sendAiMessage(content: String): Result<AiMessage>
+    suspend fun sendAiMessage(content: String, mode: AiConversationMode = AiConversationMode.CHAT): Result<AiMessage>
 
     suspend fun updateProfile(nickname: String, bio: String): Result<Unit>
 }

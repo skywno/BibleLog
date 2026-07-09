@@ -7,3 +7,6 @@ httpx>=0.28.0
 authlib>=1.4.0
 python-multipart>=0.0.17
 itsdangerous>=2.2.0
+cassandra-driver>=3.29.0
+redis>=5.2.0
+psycopg[binary]>=3.2.0

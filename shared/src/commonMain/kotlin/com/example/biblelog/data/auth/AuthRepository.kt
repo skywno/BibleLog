@@ -73,6 +73,7 @@ class AuthRepository(
     }
 
     suspend fun logout() {
+        runCatching { apiClient.logout() }
         tokenStorage.clear()
         apiClient.setAccessToken(null)
         _session.value = null

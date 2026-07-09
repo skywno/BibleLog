@@ -1,0 +1,157 @@
+x-common-env: &common-env
+  DEBUG: "true"
+  JWT_SECRET: dev-change-me
+  INTERNAL_SERVICE_TOKEN: dev-internal-token
+  STORAGE_BACKEND: scylla
+  SCYLLA_HOSTS: scylla
+  SCYLLA_PORT: "9042"
+  SCYLLA_KEYSPACE: biblelog
+  REDIS_URL: redis://redis:6379/0
+  REDIS_ENABLED: "true"
+  POSTGRES_URL: postgresql://biblelog:biblelog@postgres:5432/biblelog
+  POSTGRES_ENABLED: "true"
+  OAUTH_REDIRECT_BASE: http://localhost:8000/auth
+  AI_PROVIDER: mock
+  USER_SERVICE_URL: http://user-service:8001
+  NOTE_SERVICE_URL: http://note-service:8002
+  SOCIAL_SERVICE_URL: http://social-service:8003
+  FEED_SERVICE_URL: http://feed-service:8004
+  READING_SERVICE_URL: http://reading-service:8005
+  AI_SERVICE_URL: http://ai-service:8006
+
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --entrypoints.web.address=:8000
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --log.level=INFO
+    ports:
+      - "8000:8000"
+      - "8090:8080"
+    volumes:
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+    depends_on:
+      - user-service
+      - note-service
+      - feed-service
+      - reading-service
+      - ai-service
+
+  scylla:
+    image: scylladb/scylla:5.4
+    command: --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status | grep -q '^UN'"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 90s
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: biblelog
+      POSTGRES_PASSWORD: biblelog
+      POSTGRES_DB: biblelog
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U biblelog"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user_service/Dockerfile
+    environment:
+      <<: *common-env
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  note-service:
+    build:
+      context: .
+      dockerfile: note_service/Dockerfile
+    restart: on-failure
+    environment:
+      <<: *common-env
+    ports:
+      - "8002:8002"
+    depends_on:
+      scylla:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+
+  social-service:
+    build:
+      context: .
+      dockerfile: social_service/Dockerfile
+    restart: on-failure
+    environment:
+      <<: *common-env
+    ports:
+      - "8003:8003"
+    depends_on:
+      scylla:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  feed-service:
+    build:
+      context: .
+      dockerfile: feed_service/Dockerfile
+    environment:
+      <<: *common-env
+    ports:
+      - "8004:8004"
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      note-service:
+        condition: service_started
+      social-service:
+        condition: service_started
+
+  reading-service:
+    build:
+      context: .
+      dockerfile: reading_service/Dockerfile
+    restart: on-failure
+    environment:
+      <<: *common-env
+    ports:
+      - "8005:8005"
+    depends_on:
+      scylla:
+        condition: service_healthy
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai_service/Dockerfile
+    environment:
+      <<: *common-env
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -264,14 +264,22 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/FeedSort'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FeedItem'
+                $ref: '#/components/schemas/FeedPageResponse'
 
   /feed/{noteId}/reactions:
     post:
@@ -613,6 +621,21 @@ components:
             $ref: '#/components/schemas/ReactionCount'
         comment_count:
           type: integer
+
+    FeedPageResponse:
+      type: object
+      required: [items, has_more]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedItem'
+        next_cursor:
+          type: string
+          nullable: true
+        has_more:
+          type: boolean
+          default: false
 
     FeedFilter:
       type: string

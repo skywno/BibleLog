@@ -1,11 +1,14 @@
 package com.example.biblelog.data
 
+import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.domain.model.AiMessage
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.domain.model.Comment
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
+import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedItem
+import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.MeditationNote
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.domain.model.NotificationItem
@@ -212,6 +215,11 @@ class InMemoryBibleLogRepository : BibleLogRepository {
         return Result.success(comment)
     }
 
+    override suspend fun loadFeed(filter: FeedFilter, sort: FeedSort): Result<Unit> {
+        refreshFeed(filter, sort)
+        return Result.success(Unit)
+    }
+
     override suspend fun toggleReaction(noteId: String, reaction: FaithReaction): Result<Unit> {
         val noteReactions = reactions.getOrPut(noteId) { mutableMapOf() }
         val users = noteReactions.getOrPut(reaction) { mutableSetOf() }
@@ -220,7 +228,10 @@ class InMemoryBibleLogRepository : BibleLogRepository {
         return Result.success(Unit)
     }
 
-    override suspend fun sendAiMessage(content: String): Result<AiMessage> {
+    override suspend fun sendAiMessage(
+        content: String,
+        mode: AiConversationMode,
+    ): Result<AiMessage> {
         val userMessage = AiMessage(
             id = Uuid.random().toString(),
             content = content,
@@ -231,7 +242,7 @@ class InMemoryBibleLogRepository : BibleLogRepository {
 
         val aiResponse = AiMessage(
             id = Uuid.random().toString(),
-            content = buildAiResponse(content),
+            content = buildAiResponse(content, mode),
             isFromUser = false,
             timestamp = currentInstant(),
             suggestedVerse = BibleReference(43, 3, 16, 3, 16),
@@ -245,20 +256,36 @@ class InMemoryBibleLogRepository : BibleLogRepository {
         return Result.success(Unit)
     }
 
-    private fun refreshFeed() {
-        _feed.value = _notes.value
+    private fun refreshFeed(
+        filter: FeedFilter = FeedFilter.ALL,
+        sort: FeedSort = FeedSort.LATEST,
+    ) {
+        val filtered = _notes.value
             .filter { it.visibility != NoteVisibility.PRIVATE }
-            .sortedByDescending { it.createdAt }
-            .map { note ->
-                FeedItem(
-                    note = note,
-                    reactions = FaithReaction.entries.map { type ->
-                        val users = reactions[note.id]?.get(type).orEmpty()
-                        ReactionCount(type, users.size, currentUserId in users)
-                    },
-                    commentCount = comments[note.id]?.size ?: 0,
-                )
+            .filter { note ->
+                when (filter) {
+                    FeedFilter.ALL -> true
+                    FeedFilter.SMALL_GROUP -> note.visibility == NoteVisibility.SMALL_GROUP
+                    FeedFilter.CHURCH -> note.visibility == NoteVisibility.CHURCH
+                    FeedFilter.FRIENDS -> note.visibility == NoteVisibility.FRIENDS
+                }
             }
+        val sorted = when (sort) {
+            FeedSort.LATEST -> filtered.sortedByDescending { it.createdAt }
+            FeedSort.POPULAR -> filtered.sortedByDescending { note ->
+                reactions[note.id]?.values?.sumOf { it.size } ?: 0
+            }
+        }
+        _feed.value = sorted.map { note ->
+            FeedItem(
+                note = note,
+                reactions = FaithReaction.entries.map { type ->
+                    val users = reactions[note.id]?.get(type).orEmpty()
+                    ReactionCount(type, users.size, currentUserId in users)
+                },
+                commentCount = comments[note.id]?.size ?: 0,
+            )
+        }
     }
 
     private fun calculateReadVersesByBook(): Map<Int, Int> {
@@ -298,7 +325,11 @@ class InMemoryBibleLogRepository : BibleLogRepository {
         return streak
     }
 
-    private fun buildAiResponse(userInput: String): String = when {
+    private fun buildAiResponse(userInput: String, mode: AiConversationMode): String = when {
+        mode == AiConversationMode.PRAYER ->
+            "함께 기도하겠습니다. 주님, 지금 이 자리의 마음을 아시는 주님께 올려 드립니다. " +
+                "평안과 위로와 인도하심을 허락해 주세요. 아멘."
+
         userInput.contains("슬프") || userInput.contains("힘들") ->
             "마음이 무거우시군요. 시편 34:18처럼, 주님은 상한 마음을 가까이 하십니다. " +
                 "지금 느끼시는 감정을 있는 그대로 주님께 가져가셔도 괜찮아요. 함께 기도드릴까요?"

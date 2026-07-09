@@ -1,0 +1,64 @@
+http:
+  routers:
+    health:
+      rule: Path(`/health`)
+      entryPoints:
+        - web
+      service: user-service
+      priority: 100
+
+    user:
+      rule: PathPrefix(`/auth`) || PathPrefix(`/users`)
+      entryPoints:
+        - web
+      service: user-service
+
+    journal:
+      rule: PathPrefix(`/journal`)
+      entryPoints:
+        - web
+      service: note-service
+
+    feed:
+      rule: PathPrefix(`/feed`)
+      entryPoints:
+        - web
+      service: feed-service
+
+    reading:
+      rule: PathPrefix(`/reading`)
+      entryPoints:
+        - web
+      service: reading-service
+
+    ai:
+      rule: PathPrefix(`/ai`)
+      entryPoints:
+        - web
+      service: ai-service
+
+  services:
+    user-service:
+      loadBalancer:
+        servers:
+          - url: http://user-service:8001
+
+    note-service:
+      loadBalancer:
+        servers:
+          - url: http://note-service:8002
+
+    feed-service:
+      loadBalancer:
+        servers:
+          - url: http://feed-service:8004
+
+    reading-service:
+      loadBalancer:
+        servers:
+          - url: http://reading-service:8005
+
+    ai-service:
+      loadBalancer:
+        servers:
+          - url: http://ai-service:8006

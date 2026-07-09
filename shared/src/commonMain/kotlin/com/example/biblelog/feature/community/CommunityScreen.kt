@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.example.biblelog.data.BibleCatalog
 import com.example.biblelog.di.LocalBibleLogRepository
 import com.example.biblelog.domain.model.FaithReaction
+import com.example.biblelog.domain.model.FeedFilter
+import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.ui.components.WantedCard
 import com.example.biblelog.ui.components.WantedFilterChip
@@ -42,17 +45,17 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
     var sortIndex by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
-    val filters = listOf("전체", "소그룹", "교회", "친구")
-    val filteredFeed = when (filterIndex) {
-        1 -> feed.filter { it.note.visibility == NoteVisibility.SMALL_GROUP }
-        2 -> feed.filter { it.note.visibility == NoteVisibility.CHURCH }
-        3 -> feed.filter { it.note.visibility == NoteVisibility.FRIENDS }
-        else -> feed
-    }.let { items ->
-        when (sortIndex) {
-            1 -> items.sortedByDescending { item -> item.reactions.sumOf { it.count } }
-            else -> items.sortedByDescending { it.note.createdAt }
-        }
+    val filters = listOf(
+        FeedFilter.ALL to "전체",
+        FeedFilter.SMALL_GROUP to "소그룹",
+        FeedFilter.CHURCH to "교회",
+        FeedFilter.FRIENDS to "친구",
+    )
+    val feedFilter = filters[filterIndex].first
+    val feedSort = if (sortIndex == 1) FeedSort.POPULAR else FeedSort.LATEST
+
+    LaunchedEffect(feedFilter, feedSort) {
+        repository.loadFeed(feedFilter, feedSort)
     }
 
     Column(
@@ -65,7 +68,7 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
-            filters.forEachIndexed { index, label ->
+            filters.forEachIndexed { index, (_, label) ->
                 WantedFilterChip(
                     label = label,
                     selected = filterIndex == index,
@@ -85,7 +88,7 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(WantedSpacing.Base.dp)) {
-            items(filteredFeed, key = { it.note.id }) { item ->
+            items(feed, key = { it.note.id }) { item ->
                 FeedCard(
                     item = item,
                     onReaction = { reaction ->
@@ -135,11 +138,12 @@ private fun FeedCard(
         Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
-            item.reactions.filter { it.count > 0 || it.reactedByMe }.forEach { reaction ->
+            FaithReaction.entries.forEach { reactionType ->
+                val reaction = item.reactions.find { it.type == reactionType }
                 WantedFilterChip(
-                    label = "${reaction.type.toLabel()} ${reaction.count}",
-                    selected = reaction.reactedByMe,
-                    onClick = { onReaction(reaction.type) },
+                    label = "${reactionType.toLabel()} ${reaction?.count ?: 0}",
+                    selected = reaction?.reactedByMe == true,
+                    onClick = { onReaction(reactionType) },
                 )
             }
         }

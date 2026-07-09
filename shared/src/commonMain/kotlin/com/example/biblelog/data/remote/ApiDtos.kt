@@ -106,6 +106,13 @@ data class ApiFeedItemDto(
 )
 
 @Serializable
+data class ApiFeedPageResponseDto(
+    val items: List<ApiFeedItemDto>,
+    @SerialName("next_cursor") val nextCursor: String? = null,
+    @SerialName("has_more") val hasMore: Boolean = false,
+)
+
+@Serializable
 data class ApiAiMessageDto(
     val id: String,
     val content: String,
@@ -124,7 +131,7 @@ data class ApiSendAiMessageRequestDto(
 data class ApiSendAiMessageResponseDto(
     @SerialName("user_message") val userMessage: ApiAiMessageDto,
     @SerialName("assistant_message") val assistantMessage: ApiAiMessageDto,
-    val provider: String,
+    val provider: String? = null,
 )
 
 @Serializable

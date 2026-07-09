@@ -1,58 +1,78 @@
-# BibleLog FastAPI Backend
+# BibleLog FastAPI Backend (Microservices Monorepo)
 
-OpenAPI contract: [`../openapi/biblelog-api.yaml`](../openapi/biblelog-api.yaml)
+OpenAPI: [`../openapi/biblelog-api.yaml`](../openapi/biblelog-api.yaml)  
+Architecture: [`../architecture.md`](../architecture.md)
 
-## Setup
+## Layout
+
+```
+backend/
+├── traefik/              # API Gateway (Traefik dynamic routing)
+├── shared/               # Config, models, DB clients, events, JWT helpers
+├── user_service/         # /auth, /users (+ internal relation APIs)
+├── note_service/         # /journal (+ internal note APIs)
+├── feed_service/         # /feed (Redis ZSET + assembly)
+├── social_service/       # internal reactions/comments APIs
+├── reading_service/      # /reading
+├── ai_service/           # /ai
+├── schema/               # ScyllaDB + PostgreSQL DDL
+├── docker-compose.yml    # Traefik + infra + all services
+└── */Dockerfile          # per-service container images
+```
+
+## Quick start
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
+docker compose up --build
 ```
 
-## Run
+| Entry | URL |
+|-------|-----|
+| API (Traefik) | http://localhost:8000 |
+| Traefik dashboard | http://localhost:8090 |
 
-```bash
-fastapi dev
-```
-
-Production:
-
-```bash
-fastapi run
-```
-
-Alternatively, with uvicorn directly:
-
-```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-- Swagger UI: http://localhost:8000/docs
-- Health: http://localhost:8000/health
-
-## OAuth
-
-1. Google/Facebook OAuth 앱을 생성하고 `.env`에 client id/secret을 설정합니다.
-2. Redirect URI: `http://localhost:8000/auth/{google|facebook}/callback`
-3. 클라이언트는 `GET /auth/{provider}/authorize?redirect_uri=...`로 URL을 받아 브라우저에서 엽니다.
-
-개발 중 OAuth 없이 테스트하려면:
+Dev login:
 
 ```bash
 curl -X POST "http://localhost:8000/auth/dev/login?email=demo@biblelog.app"
 ```
 
-## AI Provider Switching
+## Routing (Traefik)
 
-`AI_PROVIDER` 환경 변수만 변경하면 됩니다.
+| Path prefix | Service | Internal port |
+|-------------|---------|---------------|
+| `/auth`, `/users` | user-service | 8001 |
+| `/journal` | note-service | 8002 |
+| `/feed` | feed-service | 8004 |
+| `/reading` | reading-service | 8005 |
+| `/ai` | ai-service | 8006 |
 
-| Value | Description |
-|-------|-------------|
-| `mock` | 로컬 개발용 (기본) |
-| `openai` | OpenAI Chat Completions |
-| `anthropic` | Anthropic Messages API |
+`social-service`는 `/internal/*`만 노출하며 Traefik public 라우트에 포함되지 않습니다.
 
-클라이언트는 `/ai/conversations/{id}/messages` 단일 인터페이스만 사용합니다.
+라우팅 설정: [`traefik/dynamic/routes.yml`](traefik/dynamic/routes.yml)
+
+## Direct service access (debug)
+
+각 서비스 포트가 호스트에도 노출됩니다 (8001–8006). Swagger는 서비스별로 확인할 수 있습니다.
+
+## Feed API
+
+`GET /feed` → `FeedPageResponse` (`items`, `next_cursor`, `has_more`)
+
+피드 타임라인은 DB에 저장하지 않습니다. Redis Sorted Set에 `note_id`만 캐시합니다.
+
+## Per-service packages
+
+| Package | Router prefix | Storage |
+|---------|---------------|---------|
+| `user_service` | `/auth`, `/users` | PostgreSQL |
+| `note_service` | `/journal` | ScyllaDB |
+| `feed_service` | `/feed` | Redis |
+| `social_service` | `/internal/*` | ScyllaDB |
+| `reading_service` | `/reading` | ScyllaDB |
+| `ai_service` | `/ai` | PostgreSQL |
+
+## AI provider
+
+`AI_PROVIDER`: `mock` | `openai` | `anthropic`

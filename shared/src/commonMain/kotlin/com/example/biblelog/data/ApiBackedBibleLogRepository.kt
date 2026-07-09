@@ -10,12 +10,15 @@ import com.example.biblelog.data.remote.ApiReadingStatsDto
 import com.example.biblelog.data.remote.ApiSendAiMessageRequestDto
 import com.example.biblelog.data.remote.ApiUpsertJournalNoteRequestDto
 import com.example.biblelog.data.remote.BibleLogApiClient
+import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.domain.model.AiMessage
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.domain.model.Comment
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
+import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedItem
+import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.MeditationNote
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.domain.model.NotificationItem
@@ -48,6 +51,8 @@ class ApiBackedBibleLogRepository(
     private var cachedProgress = ReadingProgress(0f, 0f, 0f, emptyMap())
     private var cachedStats = ReadingStats(0, 0f, emptyMap(), 0, 0)
     private var aiConversationId: String? = null
+    private var feedFilter = FeedFilter.ALL
+    private var feedSort = FeedSort.LATEST
 
     override val currentUser: StateFlow<UserProfile> = _currentUser.asStateFlow()
     override val readingRecords: StateFlow<List<ReadingRecord>> = _readingRecords.asStateFlow()
@@ -64,7 +69,7 @@ class ApiBackedBibleLogRepository(
         _currentUser.value = apiClient.getCurrentUser().toDomain()
         _readingRecords.value = apiClient.listReadingRecords().map { it.toDomain() }
         _notes.value = apiClient.listJournalNotes().map { it.toDomain() }
-        _feed.value = apiClient.listFeed().map { it.toDomain() }
+        _feed.value = apiClient.listFeed(feedFilter.toApi(), feedSort.toApi()).items.map { it.toDomain() }
         cachedProgress = apiClient.getReadingProgress().toDomain()
         cachedStats = apiClient.getReadingStats().toDomain()
         ensureAiConversation()
@@ -116,18 +121,27 @@ class ApiBackedBibleLogRepository(
             apiClient.updateJournalNote(noteId, body)
         }.toDomain()
         _notes.value = apiClient.listJournalNotes().map { it.toDomain() }
-        _feed.value = apiClient.listFeed().map { it.toDomain() }
+        _feed.value = apiClient.listFeed().items.map { it.toDomain() }
         note
     }
 
     override suspend fun deleteNote(noteId: String): Result<Unit> = runCatching {
         apiClient.deleteJournalNote(noteId)
         _notes.value = apiClient.listJournalNotes().map { it.toDomain() }
-        _feed.value = apiClient.listFeed().map { it.toDomain() }
+        _feed.value = apiClient.listFeed().items.map { it.toDomain() }
     }
 
     override suspend fun addComment(noteId: String, content: String): Result<Comment> =
         Result.failure(UnsupportedOperationException("댓글 API는 다음 단계에서 연결됩니다."))
+
+    override suspend fun loadFeed(
+        filter: FeedFilter,
+        sort: FeedSort,
+    ): Result<Unit> = runCatching {
+        feedFilter = filter
+        feedSort = sort
+        refreshFeed()
+    }
 
     override suspend fun toggleReaction(noteId: String, reaction: FaithReaction): Result<Unit> =
         runCatching {
@@ -138,12 +152,15 @@ class ApiBackedBibleLogRepository(
             refreshFeed()
         }
 
-    override suspend fun sendAiMessage(content: String): Result<AiMessage> = runCatching {
+    override suspend fun sendAiMessage(
+        content: String,
+        mode: AiConversationMode,
+    ): Result<AiMessage> = runCatching {
         ensureAiConversation()
         val conversationId = aiConversationId ?: error("AI conversation unavailable")
         val response = apiClient.sendAiMessage(
             conversationId,
-            ApiSendAiMessageRequestDto(content = content),
+            ApiSendAiMessageRequestDto(content = content, mode = mode.toApi()),
         )
         _aiMessages.value = apiClient.listAiMessages(conversationId).map { it.toDomain() }
         response.assistantMessage.toDomain()
@@ -160,7 +177,7 @@ class ApiBackedBibleLogRepository(
     }
 
     private suspend fun refreshFeed() {
-        _feed.value = apiClient.listFeed().map { it.toDomain() }
+        _feed.value = apiClient.listFeed(feedFilter.toApi(), feedSort.toApi()).items.map { it.toDomain() }
     }
 
     private suspend fun ensureAiConversation() {
@@ -177,6 +194,23 @@ private fun FaithReaction.toApi(): String = when (this) {
     FaithReaction.PRAY_TOGETHER -> "pray_together"
     FaithReaction.AMEN -> "amen"
     FaithReaction.GRACE -> "grace"
+}
+
+private fun FeedFilter.toApi(): String = when (this) {
+    FeedFilter.ALL -> "all"
+    FeedFilter.SMALL_GROUP -> "small_group"
+    FeedFilter.CHURCH -> "church"
+    FeedFilter.FRIENDS -> "friends"
+}
+
+private fun FeedSort.toApi(): String = when (this) {
+    FeedSort.LATEST -> "latest"
+    FeedSort.POPULAR -> "popular"
+}
+
+private fun AiConversationMode.toApi(): String = when (this) {
+    AiConversationMode.CHAT -> "chat"
+    AiConversationMode.PRAYER -> "prayer"
 }
 
 private fun ApiReadingRecordDto.toDomain() = ReadingRecord(
@@ -298,4 +332,11 @@ private fun String.toReaction(): FaithReaction = when (this) {
     else -> FaithReaction.GRACE
 }
 
-private fun String.toInstant(): Instant = Instant.parse(this)
+private fun String.toInstant(): Instant {
+    val normalized = when {
+        endsWith('Z') -> this
+        length > 10 && this[10] == 'T' && (substringAfter('T').contains('+') || substringAfter('T').contains('-')) -> this
+        else -> "${this}Z"
+    }
+    return Instant.parse(normalized)
+}

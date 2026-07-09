@@ -31,6 +31,23 @@ enum class FaithReaction {
     GRACE,
 }
 
+enum class FeedFilter {
+    ALL,
+    SMALL_GROUP,
+    CHURCH,
+    FRIENDS,
+}
+
+enum class FeedSort {
+    LATEST,
+    POPULAR,
+}
+
+enum class AiConversationMode {
+    CHAT,
+    PRAYER,
+}
+
 data class BibleBook(
     val id: Int,
     val nameKo: String,
