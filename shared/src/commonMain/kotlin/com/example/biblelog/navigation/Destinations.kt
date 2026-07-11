@@ -37,6 +37,7 @@ enum class JournalSubRoute {
 enum class CommunitySubRoute {
     Feed,
     Search,
+    UserProfile,
 }
 
 data class JournalNavState(
@@ -46,6 +47,7 @@ data class JournalNavState(
 
 data class CommunityNavState(
     val route: CommunitySubRoute = CommunitySubRoute.Feed,
+    val profileUserId: String? = null,
 )
 
 val JournalNavStateSaver = listSaver(
@@ -59,9 +61,12 @@ val JournalNavStateSaver = listSaver(
 )
 
 val CommunityNavStateSaver = listSaver(
-    save = { state -> listOf(state.route.name) },
+    save = { state -> listOf(state.route.name, state.profileUserId) },
     restore = { saved ->
-        CommunityNavState(route = CommunitySubRoute.valueOf(saved[0] as String))
+        CommunityNavState(
+            route = CommunitySubRoute.valueOf(saved[0] as String),
+            profileUserId = saved[1] as String?,
+        )
     },
 )
 

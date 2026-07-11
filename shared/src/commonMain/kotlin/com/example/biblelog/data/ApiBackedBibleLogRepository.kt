@@ -18,7 +18,9 @@ import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedItem
-import com.example.biblelog.domain.model.FeedSort
+import com.example.biblelog.data.mapper.toApi
+import com.example.biblelog.domain.model.FollowRequest
+import com.example.biblelog.domain.model.ProfileVisibility
 import com.example.biblelog.domain.model.MeditationNote
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.domain.model.NotificationItem
@@ -39,7 +41,7 @@ class ApiBackedBibleLogRepository(
     private val apiClient: BibleLogApiClient,
 ) : BibleLogRepository {
 
-    private val _currentUser = MutableStateFlow(UserProfile("", "", "", false))
+    private val _currentUser = MutableStateFlow(UserProfile("", "", "", "", ProfileVisibility.PUBLIC, false))
     private val _readingRecords = MutableStateFlow<List<ReadingRecord>>(emptyList())
     private val _readingProgress = MutableStateFlow(ReadingProgress(0f, 0f, 0f, emptyMap()))
     private val _readingStats = MutableStateFlow(ReadingStats(0, 0f, emptyMap(), 0, 0))
@@ -76,10 +78,11 @@ class ApiBackedBibleLogRepository(
         aiConversationId?.let { id ->
             _aiMessages.value = apiClient.listAiMessages(id).map { it.toDomain() }
         }
+        _notifications.value = apiClient.listNotifications().items.map { it.toDomain() }
     }
 
     override fun clearState() {
-        _currentUser.value = UserProfile("", "", "", false)
+        _currentUser.value = UserProfile("", "", "", "", ProfileVisibility.PUBLIC, false)
         _readingRecords.value = emptyList()
         _readingProgress.value = ReadingProgress(0f, 0f, 0f, emptyMap())
         _readingStats.value = ReadingStats(0, 0f, emptyMap(), 0, 0)
@@ -186,8 +189,26 @@ class ApiBackedBibleLogRepository(
         response.assistantMessage.toDomain()
     }
 
-    override suspend fun updateProfile(nickname: String, bio: String): Result<Unit> = runCatching {
-        _currentUser.value = apiClient.updateCurrentUser(nickname, bio).toDomain()
+    override suspend fun updateProfile(
+        nickname: String?,
+        bio: String?,
+        photoUrl: String?,
+        profileVisibility: ProfileVisibility?,
+    ): Result<Unit> = runCatching {
+        _currentUser.value = apiClient.updateCurrentUser(
+            nickname = nickname,
+            bio = bio,
+            photoUrl = photoUrl,
+            profileVisibility = profileVisibility?.toApi(),
+        ).toDomain()
+    }
+
+    override suspend fun getUserProfile(userId: String): Result<UserProfile> = runCatching {
+        apiClient.getUserProfile(userId).toDomain()
+    }
+
+    override suspend fun getUserNotes(userId: String): Result<List<MeditationNote>> = runCatching {
+        apiClient.listUserNotes(userId).map { it.toDomain() }
     }
 
     override suspend fun searchUsers(query: String): Result<List<UserSearchResult>> = runCatching {
@@ -206,8 +227,24 @@ class ApiBackedBibleLogRepository(
         apiClient.sendFriendRequest(userId)
     }
 
+    override suspend fun acceptFriendRequest(requestId: String): Result<Unit> = runCatching {
+        apiClient.acceptFriendRequest(requestId)
+    }
+
     override suspend fun followUser(userId: String): Result<Unit> = runCatching {
         apiClient.followUser(userId)
+    }
+
+    override suspend fun acceptFollowRequest(requestId: String): Result<Unit> = runCatching {
+        apiClient.acceptFollowRequest(requestId)
+    }
+
+    override suspend fun rejectFollowRequest(requestId: String): Result<Unit> = runCatching {
+        apiClient.rejectFollowRequest(requestId)
+    }
+
+    override suspend fun listIncomingFollowRequests(): Result<List<FollowRequest>> = runCatching {
+        apiClient.listIncomingFollowRequests().map { it.toDomain() }
     }
 
     override suspend fun joinChurch(churchId: String): Result<Unit> = runCatching {

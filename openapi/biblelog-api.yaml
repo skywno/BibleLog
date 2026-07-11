@@ -592,6 +592,10 @@ components:
           type: integer
         start_verse:
           type: integer
+        end_book_id:
+          type: integer
+          minimum: 1
+          maximum: 66
         end_chapter:
           type: integer
         end_verse:

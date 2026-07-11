@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from common.domain import UserMembership
-from common.models import FollowUserSummary, FriendRequest, UserSearchResult
+from common.models import FollowUserSummary, FollowRequest, FriendRequest, UserSearchResult
 
 
 class RelationRepository(ABC):
@@ -57,3 +57,21 @@ class RelationRepository(ABC):
 
     @abstractmethod
     def list_follower_ids(self, user_id: str) -> list[str]: ...
+
+    @abstractmethod
+    def create_follow_request(self, from_user_id: str, to_user_id: str) -> FollowRequest: ...
+
+    @abstractmethod
+    def list_incoming_follow_requests(self, user_id: str) -> list[FollowRequest]: ...
+
+    @abstractmethod
+    def accept_follow_request(self, request_id: str, user_id: str) -> FollowRequest: ...
+
+    @abstractmethod
+    def reject_follow_request(self, request_id: str, user_id: str) -> FollowRequest: ...
+
+    @abstractmethod
+    def has_pending_follow_request(self, from_user_id: str, to_user_id: str) -> bool: ...
+
+    @abstractmethod
+    def is_approved_follower(self, follower_id: str, followee_id: str) -> bool: ...

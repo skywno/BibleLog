@@ -1,6 +1,7 @@
 package com.example.biblelog.feature.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +36,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
-import com.example.biblelog.ui.components.WantedCard
+import com.example.biblelog.domain.model.ProfileVisibility
+import com.example.biblelog.ui.components.WantedFilterChip
 import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
@@ -53,6 +55,8 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
     val notifications by viewModel.notifications.collectAsState()
     var nickname by remember(user) { mutableStateOf(user.nickname) }
     var bio by remember(user) { mutableStateOf(user.bio) }
+    var photoUrl by remember(user) { mutableStateOf(user.photoUrl) }
+    var visibilityPrivate by remember(user) { mutableStateOf(user.profileVisibility == ProfileVisibility.PRIVATE) }
     var isEditing by remember { mutableStateOf(false) }
 
     Column(
@@ -92,6 +96,21 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                 WantedTextField(value = nickname, onValueChange = { nickname = it }, label = "닉네임")
                 Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
                 WantedTextField(value = bio, onValueChange = { bio = it }, label = "한 줄 소개")
+                Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                WantedTextField(value = photoUrl, onValueChange = { photoUrl = it }, label = "프로필 사진 URL")
+                Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
+                    WantedFilterChip(
+                        label = "공개",
+                        selected = !visibilityPrivate,
+                        onClick = { visibilityPrivate = false },
+                    )
+                    WantedFilterChip(
+                        label = "비공개",
+                        selected = visibilityPrivate,
+                        onClick = { visibilityPrivate = true },
+                    )
+                }
                 Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
                 Row {
                     WantedButton(
@@ -99,6 +118,8 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                         onClick = {
                             nickname = user.nickname
                             bio = user.bio
+                            photoUrl = user.photoUrl
+                            visibilityPrivate = user.profileVisibility == ProfileVisibility.PRIVATE
                             isEditing = false
                         },
                         variant = WantedButtonVariant.Outlined,
@@ -107,7 +128,16 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     WantedButton(
                         text = "저장",
                         onClick = {
-                            viewModel.updateProfile(nickname, bio) {
+                            viewModel.updateProfile(
+                                nickname = nickname,
+                                bio = bio,
+                                photoUrl = photoUrl,
+                                profileVisibility = if (visibilityPrivate) {
+                                    ProfileVisibility.PRIVATE
+                                } else {
+                                    ProfileVisibility.PUBLIC
+                                },
+                            ) {
                                 isEditing = false
                             }
                         },
@@ -143,7 +173,32 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                         )
                         Text(notification.body, style = MaterialTheme.typography.bodySmall)
                     }
-                    if (!notification.isRead) {
+                    notification.actionRequestId?.let { requestId ->
+                        when (notification.eventType) {
+                            "friend_request" -> {
+                                WantedButton(
+                                    text = "수락",
+                                    onClick = { viewModel.acceptFriendRequest(requestId) },
+                                    variant = WantedButtonVariant.Text,
+                                )
+                            }
+                            "follow_request" -> {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    WantedButton(
+                                        text = "수락",
+                                        onClick = { viewModel.acceptFollowRequest(requestId) },
+                                        variant = WantedButtonVariant.Text,
+                                    )
+                                    WantedButton(
+                                        text = "거절",
+                                        onClick = { viewModel.rejectFollowRequest(requestId) },
+                                        variant = WantedButtonVariant.Text,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (!notification.isRead && notification.actionRequestId == null) {
                         Box(
                             modifier = Modifier
                                 .size(8.dp)

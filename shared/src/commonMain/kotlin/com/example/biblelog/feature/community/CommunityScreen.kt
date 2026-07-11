@@ -59,8 +59,26 @@ fun CommunityScreen(
         )
         CommunitySubRoute.Search -> CommunitySearchScreen(
             onBack = { onNavStateChange(CommunityNavState(CommunitySubRoute.Feed)) },
+            onUserClick = { userId ->
+                onNavStateChange(
+                    CommunityNavState(
+                        route = CommunitySubRoute.UserProfile,
+                        profileUserId = userId,
+                    ),
+                )
+            },
             modifier = modifier,
         )
+        CommunitySubRoute.UserProfile -> {
+            val userId = navState.profileUserId
+            if (userId != null) {
+                com.example.biblelog.feature.profile.UserProfileScreen(
+                    userId = userId,
+                    onBack = { onNavStateChange(CommunityNavState(CommunitySubRoute.Feed)) },
+                    modifier = modifier,
+                )
+            }
+        }
     }
 }
 

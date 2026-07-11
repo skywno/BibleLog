@@ -36,7 +36,10 @@ class PostgresUserRepository(UserRepository):
 
     def get_user(self, user_id: str) -> UserProfile:
         with self._conn.cursor() as cur:
-            cur.execute("SELECT id, nickname, bio FROM users WHERE id = %s", (user_id,))
+            cur.execute(
+                "SELECT id, nickname, bio, photo_url, profile_visibility FROM users WHERE id = %s",
+                (user_id,),
+            )
             row = cur.fetchone()
         if row is None:
             raise KeyError(user_id)
@@ -47,12 +50,21 @@ class PostgresUserRepository(UserRepository):
         user_id: str,
         nickname: str | None,
         bio: str | None,
+        photo_url: str | None = None,
+        profile_visibility: str | None = None,
     ) -> UserProfile:
         with self._conn.cursor() as cur:
             if nickname is not None:
                 cur.execute("UPDATE users SET nickname = %s WHERE id = %s", (nickname, user_id))
             if bio is not None:
                 cur.execute("UPDATE users SET bio = %s WHERE id = %s", (bio, user_id))
+            if photo_url is not None:
+                cur.execute("UPDATE users SET photo_url = %s WHERE id = %s", (photo_url, user_id))
+            if profile_visibility is not None:
+                cur.execute(
+                    "UPDATE users SET profile_visibility = %s WHERE id = %s",
+                    (profile_visibility, user_id),
+                )
         self._conn.commit()
         return self.get_user(user_id)
 

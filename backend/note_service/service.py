@@ -76,6 +76,17 @@ class NoteService:
         records = self._notes.list_by_author(author_id)
         return [await self._to_meditation_note(record) for record in records]
 
+    async def list_for_viewer(self, viewer_id: str, author_id: str) -> list[MeditationNote]:
+        records = self._notes.list_by_author(author_id)
+        notes: list[MeditationNote] = []
+        for record in records:
+            if record.is_deleted:
+                continue
+            if not await self._can_view(viewer_id, record):
+                continue
+            notes.append(await self._to_meditation_note(record))
+        return notes
+
     async def batch_summaries(self, viewer_id: str, note_ids: list[str]) -> list[NoteSummary]:
         summaries: list[NoteSummary] = []
         for note_id in note_ids:

@@ -12,7 +12,13 @@ class MemoryUserRepository(UserRepository):
 
     def ensure_user(self, user_id: str, nickname: str, bio: str = "") -> UserProfile:
         if user_id not in self.users:
-            self.users[user_id] = {"id": user_id, "nickname": nickname, "bio": bio}
+            self.users[user_id] = {
+                "id": user_id,
+                "nickname": nickname,
+                "bio": bio,
+                "photo_url": "",
+                "profile_visibility": "public",
+            }
         return UserProfile(**self.users[user_id], is_logged_in=True)
 
     def get_user(self, user_id: str) -> UserProfile:
@@ -23,12 +29,18 @@ class MemoryUserRepository(UserRepository):
         user_id: str,
         nickname: str | None,
         bio: str | None,
+        photo_url: str | None = None,
+        profile_visibility: str | None = None,
     ) -> UserProfile:
         user = self.users[user_id]
         if nickname is not None:
             user["nickname"] = nickname
         if bio is not None:
             user["bio"] = bio
+        if photo_url is not None:
+            user["photo_url"] = photo_url
+        if profile_visibility is not None:
+            user["profile_visibility"] = profile_visibility
         return self.get_user(user_id)
 
     def save_refresh_token(self, token: str, user_id: str) -> None:

@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -29,6 +30,8 @@ import com.example.biblelog.data.BibleCatalog
 import com.example.biblelog.di.AppContainer
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.navigation.BibleSubRoute
+import com.example.biblelog.ui.components.BiblePickerPoint
+import com.example.biblelog.ui.components.BibleReferencePicker
 import com.example.biblelog.ui.components.StreakCalendar
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
@@ -159,16 +162,30 @@ private fun AddReadingRecordScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val books = BibleCatalog.books
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
 
-    var selectedBookIndex by remember { mutableIntStateOf(0) }
-    var startChapter by remember { mutableStateOf("1") }
-    var startVerse by remember { mutableStateOf("1") }
-    var endChapter by remember { mutableStateOf("1") }
-    var endVerse by remember { mutableStateOf("10") }
+    var startPoint by remember {
+        mutableStateOf(BiblePickerPoint(bookId = 1, chapter = 1, verse = 1))
+    }
+    var endPoint by remember {
+        mutableStateOf(BiblePickerPoint(bookId = 1, chapter = 1, verse = 10))
+    }
     var minutes by remember { mutableStateOf("15") }
+
+    LaunchedEffect(startPoint) {
+        val (endBookId, endChapter, endVerse) = BibleCatalog.clampEnd(
+            startPoint.bookId,
+            startPoint.chapter,
+            startPoint.verse,
+            endPoint.bookId,
+            endPoint.chapter,
+            endPoint.verse,
+        )
+        if (endBookId != endPoint.bookId || endChapter != endPoint.chapter || endVerse != endPoint.verse) {
+            endPoint = BiblePickerPoint(endBookId, endChapter, endVerse)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -186,72 +203,23 @@ private fun AddReadingRecordScreen(
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 
-        Text("성경 책", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            WantedButton(
-                text = "◀",
-                onClick = {
-                    selectedBookIndex = (selectedBookIndex - 1).coerceAtLeast(0)
-                },
-                variant = WantedButtonVariant.Outlined,
-            )
-            Text(
-                books[selectedBookIndex].nameKo,
-                style = MaterialTheme.typography.titleLarge,
-            )
-            WantedButton(
-                text = "▶",
-                onClick = {
-                    selectedBookIndex = (selectedBookIndex + 1).coerceAtMost(books.lastIndex)
-                },
-                variant = WantedButtonVariant.Outlined,
-            )
-        }
+        BibleReferencePicker(
+            label = "시작 구절",
+            point = startPoint,
+            onPointChange = { startPoint = it },
+        )
+
+        Spacer(modifier = Modifier.height(WantedSpacing.Lg.dp))
+
+        BibleReferencePicker(
+            label = "끝 구절",
+            point = endPoint,
+            onPointChange = { endPoint = it },
+            minBookId = startPoint.bookId,
+            minPoint = startPoint,
+        )
 
         Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
-            WantedTextField(
-                value = startChapter,
-                onValueChange = { startChapter = it },
-                label = "시작 장",
-                modifier = Modifier.weight(1f),
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-            )
-            WantedTextField(
-                value = startVerse,
-                onValueChange = { startVerse = it },
-                label = "시작 절",
-                modifier = Modifier.weight(1f),
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
-            WantedTextField(
-                value = endChapter,
-                onValueChange = { endChapter = it },
-                label = "끝 장",
-                modifier = Modifier.weight(1f),
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-            )
-            WantedTextField(
-                value = endVerse,
-                onValueChange = { endVerse = it },
-                label = "끝 절",
-                modifier = Modifier.weight(1f),
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
 
         WantedTextField(
             value = minutes,
@@ -274,14 +242,25 @@ private fun AddReadingRecordScreen(
         WantedButton(
             text = "저장",
             onClick = {
-                val book = books[selectedBookIndex]
                 val reference = BibleReference(
-                    bookId = book.id,
-                    startChapter = startChapter.toIntOrNull() ?: 1,
-                    startVerse = startVerse.toIntOrNull() ?: 1,
-                    endChapter = endChapter.toIntOrNull() ?: 1,
-                    endVerse = endVerse.toIntOrNull() ?: 1,
+                    bookId = startPoint.bookId,
+                    startChapter = startPoint.chapter,
+                    startVerse = startPoint.verse,
+                    endBookId = endPoint.bookId,
+                    endChapter = endPoint.chapter,
+                    endVerse = endPoint.verse,
                 )
+                if (!BibleCatalog.isValidRange(
+                        startPoint.bookId,
+                        startPoint.chapter,
+                        startPoint.verse,
+                        endPoint.bookId,
+                        endPoint.chapter,
+                        endPoint.verse,
+                    )
+                ) {
+                    return@WantedButton
+                }
                 viewModel.addReadingRecord(
                     reference = reference,
                     minutesRead = minutes.toIntOrNull() ?: 0,

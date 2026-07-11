@@ -18,6 +18,8 @@ class UserRepository(ABC):
         user_id: str,
         nickname: str | None,
         bio: str | None,
+        photo_url: str | None = None,
+        profile_visibility: str | None = None,
     ) -> UserProfile: ...
 
     @abstractmethod

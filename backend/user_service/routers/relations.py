@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from common.deps import get_current_user_id
-from common.models import FollowUserSummary, FriendRequest, SendFriendRequestBody, UserSearchResult
+from common.models import FollowRequest, FollowUserSummary, FriendRequest, SendFriendRequestBody, UserSearchResult
 from user_service.deps import CurrentUserIdDep, UserContainerDep
 
 router = APIRouter(tags=["relations"], dependencies=[Depends(get_current_user_id)])
@@ -112,3 +112,43 @@ def list_following(user_id: CurrentUserIdDep, container: UserContainerDep) -> li
 @router.get("/followers")
 def list_followers(user_id: CurrentUserIdDep, container: UserContainerDep) -> list[FollowUserSummary]:
     return container.relation_service.list_followers(user_id)
+
+
+@router.get("/follows/requests/incoming")
+def list_incoming_follow_requests(
+    user_id: CurrentUserIdDep,
+    container: UserContainerDep,
+) -> list[FollowRequest]:
+    return container.relation_service.list_incoming_follow_requests(user_id)
+
+
+@router.post("/follows/requests/{request_id}/accept")
+async def accept_follow_request(
+    request_id: str,
+    user_id: CurrentUserIdDep,
+    container: UserContainerDep,
+) -> FollowRequest:
+    try:
+        return await container.relation_service.accept_follow_request(request_id, user_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/follows/requests/{request_id}/reject")
+def reject_follow_request(
+    request_id: str,
+    user_id: CurrentUserIdDep,
+    container: UserContainerDep,
+) -> FollowRequest:
+    try:
+        return container.relation_service.reject_follow_request(request_id, user_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

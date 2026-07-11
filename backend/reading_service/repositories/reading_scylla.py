@@ -31,8 +31,8 @@ class ScyllaReadingRepository(ReadingRepository):
             """
             INSERT INTO reading_records_by_user (
                 user_id, date, record_id, book_id, start_chapter, start_verse,
-                end_chapter, end_verse, minutes_read, created_at, reference_json
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                end_book_id, end_chapter, end_verse, minutes_read, created_at, reference_json
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 user_id,
@@ -41,6 +41,7 @@ class ScyllaReadingRepository(ReadingRepository):
                 reference.book_id,
                 reference.start_chapter,
                 reference.start_verse,
+                reference.end_book_id,
                 reference.end_chapter,
                 reference.end_verse,
                 record.minutes_read,

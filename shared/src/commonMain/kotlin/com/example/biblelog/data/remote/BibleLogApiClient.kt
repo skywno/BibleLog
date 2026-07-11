@@ -87,8 +87,27 @@ class BibleLogApiClient(
     suspend fun getCurrentUser(): ApiUserProfileDto =
         authorizedGet("/users/me")
 
-    suspend fun updateCurrentUser(nickname: String?, bio: String?): ApiUserProfileDto =
-        authorizedPatch("/users/me", ApiUpdateUserProfileRequestDto(nickname, bio))
+    suspend fun getUserProfile(userId: String): ApiUserProfileDto =
+        authorizedGet("/users/$userId")
+
+    suspend fun updateCurrentUser(
+        nickname: String? = null,
+        bio: String? = null,
+        photoUrl: String? = null,
+        profileVisibility: String? = null,
+    ): ApiUserProfileDto =
+        authorizedPatch(
+            "/users/me",
+            ApiUpdateUserProfileRequestDto(
+                nickname = nickname,
+                bio = bio,
+                photoUrl = photoUrl,
+                profileVisibility = profileVisibility,
+            ),
+        )
+
+    suspend fun listUserNotes(userId: String): List<ApiMeditationNoteDto> =
+        authorizedGet("/journal/users/$userId/notes")
 
     suspend fun listReadingRecords(): List<ApiReadingRecordDto> =
         authorizedGet("/reading/records")
@@ -161,6 +180,15 @@ class BibleLogApiClient(
 
     suspend fun acceptFriendRequest(requestId: String): ApiFriendRequestDto =
         authorizedPostEmpty("/friends/requests/$requestId/accept")
+
+    suspend fun listIncomingFollowRequests(): List<ApiFollowRequestDto> =
+        authorizedGet("/follows/requests/incoming")
+
+    suspend fun acceptFollowRequest(requestId: String): ApiFollowRequestDto =
+        authorizedPostEmpty("/follows/requests/$requestId/accept")
+
+    suspend fun rejectFollowRequest(requestId: String): ApiFollowRequestDto =
+        authorizedPostEmpty("/follows/requests/$requestId/reject")
 
     suspend fun followUser(userId: String) {
         httpClient.post("/follows/$userId") { authHeader() }

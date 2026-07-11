@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from common.domain import UserMembership
-from common.models import FollowUserSummary, FriendRequest, UserSearchResult
+from common.models import FollowUserSummary, FollowRequest, FriendRequest, UserSearchResult
 from user_service.repositories.relation import RelationRepository
 
 
@@ -15,10 +15,11 @@ class MemoryRelationRepository(RelationRepository):
         self.group_members: dict[str, set[str]] = {}
         self.users: dict[str, UserSearchResult] = {}
         self.friend_requests: dict[str, FriendRequest] = {}
+        self.follow_requests: dict[str, FollowRequest] = {}
         self.follows: dict[str, set[str]] = {}
 
-    def register_user(self, user_id: str, nickname: str, bio: str = "") -> None:
-        self.users[user_id] = UserSearchResult(id=user_id, nickname=nickname, bio=bio)
+    def register_user(self, user_id: str, nickname: str, bio: str = "", photo_url: str | None = None) -> None:
+        self.users[user_id] = UserSearchResult(id=user_id, nickname=nickname, bio=bio, photo_url=photo_url)
 
     def list_friend_ids(self, user_id: str) -> list[str]:
         return sorted(self.friendships.get(user_id, set()))
@@ -147,6 +148,69 @@ class MemoryRelationRepository(RelationRepository):
             for follower_id, followees in self.follows.items()
             if user_id in followees
         ]
+
+    def create_follow_request(self, from_user_id: str, to_user_id: str) -> FollowRequest:
+        if from_user_id == to_user_id:
+            raise ValueError("Cannot send follow request to yourself")
+        if to_user_id in self.follows.get(from_user_id, set()):
+            raise ValueError("Already following")
+        if self.has_pending_follow_request(from_user_id, to_user_id):
+            raise ValueError("Follow request already pending")
+        request_id = str(uuid.uuid4())
+        from_user = self.users.get(from_user_id, UserSearchResult(id=from_user_id, nickname=from_user_id))
+        request = FollowRequest(
+            id=request_id,
+            from_user_id=from_user_id,
+            from_user_nickname=from_user.nickname,
+            to_user_id=to_user_id,
+            status="pending",
+            created_at=datetime.now(UTC),
+        )
+        self.follow_requests[request_id] = request
+        return request
+
+    def list_incoming_follow_requests(self, user_id: str) -> list[FollowRequest]:
+        return [
+            request
+            for request in self.follow_requests.values()
+            if request.to_user_id == user_id and request.status == "pending"
+        ]
+
+    def accept_follow_request(self, request_id: str, user_id: str) -> FollowRequest:
+        request = self.follow_requests.get(request_id)
+        if request is None:
+            raise KeyError(request_id)
+        if request.to_user_id != user_id:
+            raise PermissionError(request_id)
+        if request.status != "pending":
+            raise ValueError("Request is not pending")
+        self.follow(request.from_user_id, request.to_user_id)
+        updated = request.model_copy(update={"status": "accepted"})
+        self.follow_requests[request_id] = updated
+        return updated
+
+    def reject_follow_request(self, request_id: str, user_id: str) -> FollowRequest:
+        request = self.follow_requests.get(request_id)
+        if request is None:
+            raise KeyError(request_id)
+        if request.to_user_id != user_id:
+            raise PermissionError(request_id)
+        if request.status != "pending":
+            raise ValueError("Request is not pending")
+        updated = request.model_copy(update={"status": "rejected"})
+        self.follow_requests[request_id] = updated
+        return updated
+
+    def has_pending_follow_request(self, from_user_id: str, to_user_id: str) -> bool:
+        return any(
+            request.from_user_id == from_user_id
+            and request.to_user_id == to_user_id
+            and request.status == "pending"
+            for request in self.follow_requests.values()
+        )
+
+    def is_approved_follower(self, follower_id: str, followee_id: str) -> bool:
+        return followee_id in self.follows.get(follower_id, set())
 
     def set_membership(self, user_id: str, membership: UserMembership) -> None:
         self.memberships[user_id] = membership

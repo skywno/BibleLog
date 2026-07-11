@@ -6,6 +6,8 @@ import com.example.biblelog.data.remote.ApiBibleReferenceDto
 import com.example.biblelog.data.remote.ApiChurchDto
 import com.example.biblelog.data.remote.ApiFeedItemDto
 import com.example.biblelog.data.remote.ApiMeditationNoteDto
+import com.example.biblelog.data.remote.ApiFollowRequestDto
+import com.example.biblelog.data.remote.ApiNotificationItemDto
 import com.example.biblelog.data.remote.ApiReadingProgressDto
 import com.example.biblelog.data.remote.ApiReadingRecordDto
 import com.example.biblelog.data.remote.ApiReadingStatsDto
@@ -21,7 +23,9 @@ import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedItem
-import com.example.biblelog.domain.model.FeedSort
+import com.example.biblelog.domain.model.FollowRequest
+import com.example.biblelog.domain.model.NotificationItem
+import com.example.biblelog.domain.model.ProfileVisibility
 import com.example.biblelog.domain.model.MeditationNote
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.domain.model.ReadingProgress
@@ -48,6 +52,7 @@ fun ApiBibleReferenceDto.toDomain() = BibleReference(
     bookId = bookId,
     startChapter = startChapter,
     startVerse = startVerse,
+    endBookId = endBookId ?: bookId,
     endChapter = endChapter,
     endVerse = endVerse,
 )
@@ -56,6 +61,7 @@ fun BibleReference.toDto() = ApiBibleReferenceDto(
     bookId = bookId,
     startChapter = startChapter,
     startVerse = startVerse,
+    endBookId = if (endBookId != bookId) endBookId else null,
     endChapter = endChapter,
     endVerse = endVerse,
 )
@@ -112,6 +118,8 @@ fun ApiUserProfileDto.toDomain() = UserProfile(
     id = id,
     nickname = nickname,
     bio = bio,
+    photoUrl = photoUrl,
+    profileVisibility = profileVisibility.toProfileVisibility(),
     isLoggedIn = isLoggedIn,
 )
 
@@ -119,7 +127,35 @@ fun ApiUserSearchResultDto.toDomain() = UserSearchResult(
     id = id,
     nickname = nickname,
     bio = bio,
+    photoUrl = photoUrl,
 )
+
+fun ApiFollowRequestDto.toDomain() = FollowRequest(
+    id = id,
+    fromUserId = fromUserId,
+    fromUserNickname = fromUserNickname,
+    toUserId = toUserId,
+    status = status,
+    createdAt = createdAt.toInstant(),
+)
+
+fun ApiNotificationItemDto.toDomain() = NotificationItem(
+    id = id,
+    eventType = eventType,
+    payload = payload,
+    isRead = read,
+    createdAt = createdAt.toInstant(),
+)
+
+private fun String.toProfileVisibility(): ProfileVisibility = when (this) {
+    "private" -> ProfileVisibility.PRIVATE
+    else -> ProfileVisibility.PUBLIC
+}
+
+fun ProfileVisibility.toApi(): String = when (this) {
+    ProfileVisibility.PUBLIC -> "public"
+    ProfileVisibility.PRIVATE -> "private"
+}
 
 fun ApiChurchDto.toDomain() = ChurchSummary(
     id = id,

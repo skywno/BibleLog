@@ -1,6 +1,7 @@
 package com.example.biblelog.feature.community
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,7 @@ import com.example.biblelog.ui.theme.WantedSpacing
 @Composable
 fun CommunitySearchScreen(
     onBack: () -> Unit,
+    onUserClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: CommunitySearchViewModel = viewModel {
@@ -131,11 +133,10 @@ fun CommunitySearchScreen(
                             items(uiState.users, key = { it.id }) { user ->
                                 UserSearchResultCard(
                                     user = user,
-                                    isFriend = user.id in uiState.friendIds,
-                                    isFollowing = user.id in uiState.followingIds,
-                                    isPending = user.id in uiState.pendingFriendRequestIds,
-                                    onFriendRequest = { viewModel.sendFriendRequest(user.id) },
-                                    onFollow = { viewModel.followUser(user.id) },
+                                    onClick = {
+                                        viewModel.clearSearch()
+                                        onUserClick(user.id)
+                                    },
                                 )
                             }
                         }
@@ -179,84 +180,37 @@ private fun CommunitySearchCategory.toLabel(): String = when (this) {
 @Composable
 private fun UserSearchResultCard(
     user: UserSearchResult,
-    isFriend: Boolean,
-    isFollowing: Boolean,
-    isPending: Boolean,
-    onFriendRequest: () -> Unit,
-    onFollow: () -> Unit,
+    onClick: () -> Unit,
 ) {
-    WantedCard {
+    WantedCard(modifier = Modifier.clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(WantedColors.Primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(WantedColors.Primary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center,
-                ) {
+                Text(
+                    text = user.nickname.firstOrNull()?.toString() ?: "?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = WantedColors.Primary,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(user.nickname, style = MaterialTheme.typography.titleMedium)
+                if (user.bio.isNotBlank()) {
                     Text(
-                        text = user.nickname.firstOrNull()?.toString() ?: "?",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = WantedColors.Primary,
+                        user.bio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WantedColors.Secondary,
                     )
                 }
-                Column {
-                    Text(user.nickname, style = MaterialTheme.typography.titleMedium)
-                    if (user.bio.isNotBlank()) {
-                        Text(
-                            user.bio,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = WantedColors.Secondary,
-                        )
-                    }
-                }
             }
-            UserActionButtons(
-                isFriend = isFriend,
-                isFollowing = isFollowing,
-                isPending = isPending,
-                onFriendRequest = onFriendRequest,
-                onFollow = onFollow,
-            )
-        }
-    }
-}
-
-@Composable
-private fun UserActionButtons(
-    isFriend: Boolean,
-    isFollowing: Boolean,
-    isPending: Boolean,
-    onFriendRequest: () -> Unit,
-    onFollow: () -> Unit,
-) {
-    Column(horizontalAlignment = Alignment.End) {
-        when {
-            isFriend -> Text("친구", style = MaterialTheme.typography.labelMedium, color = WantedColors.Secondary)
-            isPending -> Text("요청됨", style = MaterialTheme.typography.labelMedium, color = WantedColors.Secondary)
-            else -> WantedButton(
-                text = "친구 요청",
-                onClick = onFriendRequest,
-                variant = WantedButtonVariant.Outlined,
-            )
-        }
-        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
-        when {
-            isFollowing -> Text("팔로잉", style = MaterialTheme.typography.labelMedium, color = WantedColors.Secondary)
-            else -> WantedButton(
-                text = "팔로우",
-                onClick = onFollow,
-                variant = WantedButtonVariant.Secondary,
-            )
         }
     }
 }

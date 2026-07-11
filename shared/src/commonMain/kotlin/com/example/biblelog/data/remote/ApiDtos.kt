@@ -8,6 +8,8 @@ data class ApiUserProfileDto(
     val id: String,
     val nickname: String,
     val bio: String = "",
+    @SerialName("photo_url") val photoUrl: String = "",
+    @SerialName("profile_visibility") val profileVisibility: String = "public",
     @SerialName("is_logged_in") val isLoggedIn: Boolean = true,
 )
 
@@ -36,6 +38,7 @@ data class ApiBibleReferenceDto(
     @SerialName("book_id") val bookId: Int,
     @SerialName("start_chapter") val startChapter: Int,
     @SerialName("start_verse") val startVerse: Int,
+    @SerialName("end_book_id") val endBookId: Int? = null,
     @SerialName("end_chapter") val endChapter: Int,
     @SerialName("end_verse") val endVerse: Int,
 )
@@ -157,6 +160,8 @@ data class ApiToggleReactionRequestDto(
 data class ApiUpdateUserProfileRequestDto(
     val nickname: String? = null,
     val bio: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    @SerialName("profile_visibility") val profileVisibility: String? = null,
 )
 
 @Serializable
@@ -169,6 +174,17 @@ data class ApiUserSearchResultDto(
     val id: String,
     val nickname: String,
     val bio: String = "",
+    @SerialName("photo_url") val photoUrl: String = "",
+)
+
+@Serializable
+data class ApiFollowRequestDto(
+    val id: String,
+    @SerialName("from_user_id") val fromUserId: String,
+    @SerialName("from_user_nickname") val fromUserNickname: String,
+    @SerialName("to_user_id") val toUserId: String,
+    val status: String,
+    @SerialName("created_at") val createdAt: String,
 )
 
 @Serializable

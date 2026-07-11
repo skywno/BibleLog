@@ -62,17 +62,25 @@ data class BibleReference(
     val bookId: Int,
     val startChapter: Int,
     val startVerse: Int,
+    val endBookId: Int = bookId,
     val endChapter: Int,
     val endVerse: Int,
 ) {
     fun displayName(books: Map<Int, BibleBook>): String {
-        val book = books[bookId] ?: return "알 수 없음"
-        return if (startChapter == endChapter && startVerse == endVerse) {
-            "${book.nameKo} ${startChapter}:${startVerse}"
-        } else if (startChapter == endChapter) {
-            "${book.nameKo} ${startChapter}:${startVerse}-${endVerse}"
-        } else {
-            "${book.nameKo} ${startChapter}:${startVerse} ~ ${endChapter}:${endVerse}"
+        val startBook = books[bookId] ?: return "알 수 없음"
+        val endBook = books[endBookId] ?: startBook
+        val sameBook = bookId == endBookId
+        return when {
+            sameBook && startChapter == endChapter && startVerse == endVerse ->
+                "${startBook.nameKo} ${startChapter}:${startVerse}"
+            sameBook && startChapter == endChapter ->
+                "${startBook.nameKo} ${startChapter}:${startVerse}-${endVerse}"
+            sameBook ->
+                "${startBook.nameKo} ${startChapter}:${startVerse} ~ ${endChapter}:${endVerse}"
+            startChapter == endChapter && startVerse == endVerse ->
+                "${startBook.nameKo} ${startChapter}:${startVerse} ~ ${endBook.nameKo} ${endChapter}:${endVerse}"
+            else ->
+                "${startBook.nameKo} ${startChapter}:${startVerse} ~ ${endBook.nameKo} ${endChapter}:${endVerse}"
         }
     }
 }
@@ -126,10 +134,17 @@ data class FeedItem(
     val commentCount: Int,
 )
 
+enum class ProfileVisibility {
+    PUBLIC,
+    PRIVATE,
+}
+
 data class UserProfile(
     val id: String,
     val nickname: String,
     val bio: String,
+    val photoUrl: String = "",
+    val profileVisibility: ProfileVisibility = ProfileVisibility.PUBLIC,
     val isLoggedIn: Boolean,
 )
 
@@ -143,11 +158,37 @@ data class AiMessage(
 
 data class NotificationItem(
     val id: String,
-    val title: String,
-    val body: String,
+    val eventType: String,
+    val payload: Map<String, String>,
     val isRead: Boolean,
     val createdAt: Instant,
-)
+) {
+    val title: String
+        get() = when (eventType) {
+            "friend_request" -> "친구 요청"
+            "friend_accepted" -> "친구 수락"
+            "follow_request" -> "팔로우 요청"
+            "follow_request_accepted" -> "팔로우 수락"
+            "follow" -> "새 팔로워"
+            "note_published" -> "새 묵상"
+            "comment_created" -> "새 댓글"
+            "reaction_toggled" -> "새 반응"
+            else -> "알림"
+        }
+
+    val body: String
+        get() = when (eventType) {
+            "friend_request" -> "친구 요청이 도착했습니다."
+            "friend_accepted" -> "친구 요청이 수락되었습니다."
+            "follow_request" -> "팔로우 요청이 도착했습니다."
+            "follow_request_accepted" -> "팔로우 요청이 수락되었습니다."
+            "follow" -> "새로운 팔로워가 있습니다."
+            else -> payload["note_id"]?.let { "새 활동이 있습니다." } ?: "새 알림이 있습니다."
+        }
+
+    val actionRequestId: String?
+        get() = payload["request_id"]
+}
 
 data class ReadingStats(
     val totalMinutes: Int,
@@ -167,6 +208,16 @@ data class UserSearchResult(
     val id: String,
     val nickname: String,
     val bio: String,
+    val photoUrl: String = "",
+)
+
+data class FollowRequest(
+    val id: String,
+    val fromUserId: String,
+    val fromUserNickname: String,
+    val toUserId: String,
+    val status: String,
+    val createdAt: Instant,
 )
 
 data class ChurchSummary(

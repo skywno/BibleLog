@@ -82,4 +82,49 @@ object BibleCatalog {
     val oldTestamentVerses: Int = books.filter { it.testament == Testament.OLD }.sumOf { it.totalVerses }
 
     val newTestamentVerses: Int = books.filter { it.testament == Testament.NEW }.sumOf { it.totalVerses }
+
+    fun book(bookId: Int): BibleBook? = bookMap[bookId]
+
+    fun chapters(bookId: Int): IntRange {
+        val total = book(bookId)?.totalChapters ?: return IntRange.EMPTY
+        return 1..total
+    }
+
+    fun verses(bookId: Int, chapter: Int): IntRange {
+        val max = BibleVerseCounts.verseCount(bookId, chapter)
+        return if (max > 0) 1..max else IntRange.EMPTY
+    }
+
+    fun comparePoint(bookId: Int, chapter: Int, verse: Int): Long =
+        bookId.toLong() * 1_000_000L + chapter.toLong() * 1_000L + verse.toLong()
+
+    fun isValidPoint(bookId: Int, chapter: Int, verse: Int): Boolean =
+        BibleVerseCounts.isValidPoint(bookId, chapter, verse)
+
+    fun isValidRange(
+        startBookId: Int,
+        startChapter: Int,
+        startVerse: Int,
+        endBookId: Int,
+        endChapter: Int,
+        endVerse: Int,
+    ): Boolean {
+        if (!isValidPoint(startBookId, startChapter, startVerse)) return false
+        if (!isValidPoint(endBookId, endChapter, endVerse)) return false
+        return comparePoint(endBookId, endChapter, endVerse) >= comparePoint(startBookId, startChapter, startVerse)
+    }
+
+    fun clampEnd(
+        startBookId: Int,
+        startChapter: Int,
+        startVerse: Int,
+        endBookId: Int,
+        endChapter: Int,
+        endVerse: Int,
+    ): Triple<Int, Int, Int> {
+        if (comparePoint(endBookId, endChapter, endVerse) >= comparePoint(startBookId, startChapter, startVerse)) {
+            return Triple(endBookId, endChapter, endVerse)
+        }
+        return Triple(startBookId, startChapter, startVerse)
+    }
 }

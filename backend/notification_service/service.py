@@ -36,6 +36,8 @@ class NotificationService:
         self._event_bus.subscribe("FriendRequestSent", self._on_friend_request_sent)
         self._event_bus.subscribe("FriendshipAccepted", self._on_friendship_accepted)
         self._event_bus.subscribe("UserFollowed", self._on_user_followed)
+        self._event_bus.subscribe("FollowRequestSent", self._on_follow_request_sent)
+        self._event_bus.subscribe("FollowRequestAccepted", self._on_follow_request_accepted)
 
     async def _notify(self, user_id: str, event_type: str, payload: dict) -> None:
         stored = self._notifications.create(user_id, event_type, payload)
@@ -110,6 +112,16 @@ class NotificationService:
         followee_id = payload.get("followee_id")
         if followee_id:
             await self._notify(followee_id, "follow", payload)
+
+    async def _on_follow_request_sent(self, payload: dict) -> None:
+        to_user_id = payload.get("to_user_id")
+        if to_user_id:
+            await self._notify(to_user_id, "follow_request", payload)
+
+    async def _on_follow_request_accepted(self, payload: dict) -> None:
+        from_user_id = payload.get("from_user_id")
+        if from_user_id:
+            await self._notify(from_user_id, "follow_accepted", payload)
 
     def list_notifications(
         self,

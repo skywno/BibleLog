@@ -29,7 +29,13 @@ def create_reading_record(
     try:
         return container.reading_service.add_record(user_id, body)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        detail = str(exc)
+        status_code = (
+            status.HTTP_400_BAD_REQUEST
+            if "유효하지 않은" in detail
+            else status.HTTP_409_CONFLICT
+        )
+        raise HTTPException(status_code=status_code, detail=detail) from exc
 
 
 @router.get("/progress")

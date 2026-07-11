@@ -15,6 +15,15 @@ async def list_journal_notes(user_id: CurrentUserIdDep, container: NoteContainer
     return await container.note_service.list_mine(user_id)
 
 
+@router.get("/users/{user_id}/notes")
+async def list_user_notes(
+    user_id: str,
+    viewer_id: CurrentUserIdDep,
+    container: NoteContainerDep,
+) -> list[MeditationNote]:
+    return await container.note_service.list_for_viewer(viewer_id, user_id)
+
+
 @router.get("/notes/{note_id}")
 async def get_journal_note(
     note_id: str,

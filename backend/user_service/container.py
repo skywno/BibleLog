@@ -48,7 +48,7 @@ def build_user_container(settings: UserServiceSettings | None = None) -> UserCon
             relations.group_members = organizations.group_members  # type: ignore[attr-defined]
 
     event_bus = get_event_bus(settings, group_id="user-service")
-    relation_service = RelationService(relations, event_bus)
+    relation_service = RelationService(relations, users, event_bus)
     organization_service = OrganizationService(organizations)
     return UserContainer(
         settings=settings,

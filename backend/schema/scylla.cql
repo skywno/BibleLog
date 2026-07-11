@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS reading_records_by_user (
     book_id       SMALLINT,
     start_chapter SMALLINT,
     start_verse   SMALLINT,
+    end_book_id   SMALLINT,
     end_chapter   SMALLINT,
     end_verse     SMALLINT,
     minutes_read  INT,

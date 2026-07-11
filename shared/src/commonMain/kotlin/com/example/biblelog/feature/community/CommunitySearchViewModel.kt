@@ -53,6 +53,16 @@ class CommunitySearchViewModel(
         scheduleSearch()
     }
 
+    fun clearSearch() {
+        searchJob?.cancel()
+        _uiState.value = CommunitySearchUiState(
+            friendIds = _uiState.value.friendIds,
+            followingIds = _uiState.value.followingIds,
+            joinedChurchId = _uiState.value.joinedChurchId,
+            joinedGroupIds = _uiState.value.joinedGroupIds,
+        )
+    }
+
     fun sendFriendRequest(userId: String) {
         viewModelScope.launch {
             repository.sendFriendRequest(userId)

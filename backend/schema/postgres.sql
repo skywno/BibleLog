@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS users (
     id         TEXT PRIMARY KEY,
     nickname   TEXT NOT NULL,
     bio        TEXT NOT NULL DEFAULT '',
+    photo_url  TEXT NOT NULL DEFAULT '',
+    profile_visibility TEXT NOT NULL DEFAULT 'public',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -74,6 +76,18 @@ CREATE TABLE IF NOT EXISTS follows (
 );
 
 CREATE INDEX IF NOT EXISTS idx_follows_followee ON follows(followee_id);
+
+CREATE TABLE IF NOT EXISTS follow_requests (
+    id           TEXT PRIMARY KEY,
+    from_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (from_user_id, to_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_follow_requests_to_status
+    ON follow_requests(to_user_id, status);
 
 -- Churches and small groups
 CREATE TABLE IF NOT EXISTS churches (

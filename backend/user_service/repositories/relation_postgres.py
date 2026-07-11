@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import psycopg
 
 from common.domain import UserMembership
-from common.models import FollowUserSummary, FriendRequest, UserSearchResult
+from common.models import FollowUserSummary, FollowRequest, FriendRequest, UserSearchResult
 from user_service.repositories.relation import RelationRepository
 
 
@@ -59,7 +59,7 @@ class PostgresRelationRepository(RelationRepository):
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, nickname, bio FROM users
+                SELECT id, nickname, bio, photo_url FROM users
                 WHERE id != %s AND nickname ILIKE %s
                 ORDER BY nickname
                 LIMIT %s
@@ -73,7 +73,7 @@ class PostgresRelationRepository(RelationRepository):
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT u.id, u.nickname, u.bio
+                SELECT u.id, u.nickname, u.bio, u.photo_url
                 FROM friendships f
                 JOIN users u ON u.id = f.friend_id
                 WHERE f.user_id = %s
@@ -249,7 +249,7 @@ class PostgresRelationRepository(RelationRepository):
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT u.id, u.nickname, u.bio
+                SELECT u.id, u.nickname, u.bio, u.photo_url
                 FROM follows f
                 JOIN users u ON u.id = f.followee_id
                 WHERE f.follower_id = %s
@@ -264,7 +264,7 @@ class PostgresRelationRepository(RelationRepository):
         with self._conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT u.id, u.nickname, u.bio
+                SELECT u.id, u.nickname, u.bio, u.photo_url
                 FROM follows f
                 JOIN users u ON u.id = f.follower_id
                 WHERE f.followee_id = %s
@@ -292,3 +292,146 @@ class PostgresRelationRepository(RelationRepository):
             )
             rows = cur.fetchall()
         return [row["follower_id"] for row in rows]
+
+    def create_follow_request(self, from_user_id: str, to_user_id: str) -> FollowRequest:
+        if from_user_id == to_user_id:
+            raise ValueError("Cannot send follow request to yourself")
+        request_id = str(uuid.uuid4())
+        now = datetime.now(UTC)
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM follows WHERE follower_id = %s AND followee_id = %s",
+                (from_user_id, to_user_id),
+            )
+            if cur.fetchone():
+                raise ValueError("Already following")
+            cur.execute(
+                """
+                SELECT id, status FROM follow_requests
+                WHERE from_user_id = %s AND to_user_id = %s
+                """,
+                (from_user_id, to_user_id),
+            )
+            existing = cur.fetchone()
+            if existing and existing["status"] == "pending":
+                raise ValueError("Follow request already pending")
+            cur.execute(
+                """
+                INSERT INTO follow_requests (id, from_user_id, to_user_id, status, created_at)
+                VALUES (%s, %s, %s, 'pending', %s)
+                ON CONFLICT (from_user_id, to_user_id) DO UPDATE
+                SET status = 'pending', created_at = EXCLUDED.created_at
+                RETURNING id, from_user_id, to_user_id, status, created_at
+                """,
+                (request_id, from_user_id, to_user_id, now),
+            )
+            row = cur.fetchone()
+            cur.execute("SELECT nickname FROM users WHERE id = %s", (from_user_id,))
+            from_nickname = cur.fetchone()["nickname"]
+        self._conn.commit()
+        return FollowRequest(
+            id=row["id"],
+            from_user_id=row["from_user_id"],
+            from_user_nickname=from_nickname,
+            to_user_id=row["to_user_id"],
+            status=row["status"],
+            created_at=row["created_at"],
+        )
+
+    def list_incoming_follow_requests(self, user_id: str) -> list[FollowRequest]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fr.id, fr.from_user_id, u.nickname AS from_user_nickname,
+                       fr.to_user_id, fr.status, fr.created_at
+                FROM follow_requests fr
+                JOIN users u ON u.id = fr.from_user_id
+                WHERE fr.to_user_id = %s AND fr.status = 'pending'
+                ORDER BY fr.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+        return [FollowRequest(**row) for row in rows]
+
+    def _get_follow_request(self, request_id: str, user_id: str) -> dict:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT fr.id, fr.from_user_id, u.nickname AS from_user_nickname,
+                       fr.to_user_id, fr.status, fr.created_at
+                FROM follow_requests fr
+                JOIN users u ON u.id = fr.from_user_id
+                WHERE fr.id = %s
+                """,
+                (request_id,),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise KeyError(request_id)
+        if row["to_user_id"] != user_id:
+            raise PermissionError(request_id)
+        if row["status"] != "pending":
+            raise ValueError("Request is not pending")
+        return row
+
+    def accept_follow_request(self, request_id: str, user_id: str) -> FollowRequest:
+        row = self._get_follow_request(request_id, user_id)
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "UPDATE follow_requests SET status = 'accepted' WHERE id = %s",
+                (request_id,),
+            )
+            cur.execute(
+                """
+                INSERT INTO follows (follower_id, followee_id, created_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (row["from_user_id"], row["to_user_id"], datetime.now(UTC)),
+            )
+        self._conn.commit()
+        return FollowRequest(
+            id=row["id"],
+            from_user_id=row["from_user_id"],
+            from_user_nickname=row["from_user_nickname"],
+            to_user_id=row["to_user_id"],
+            status="accepted",
+            created_at=row["created_at"],
+        )
+
+    def reject_follow_request(self, request_id: str, user_id: str) -> FollowRequest:
+        row = self._get_follow_request(request_id, user_id)
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "UPDATE follow_requests SET status = 'rejected' WHERE id = %s",
+                (request_id,),
+            )
+        self._conn.commit()
+        return FollowRequest(
+            id=row["id"],
+            from_user_id=row["from_user_id"],
+            from_user_nickname=row["from_user_nickname"],
+            to_user_id=row["to_user_id"],
+            status="rejected",
+            created_at=row["created_at"],
+        )
+
+    def has_pending_follow_request(self, from_user_id: str, to_user_id: str) -> bool:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM follow_requests
+                WHERE from_user_id = %s AND to_user_id = %s AND status = 'pending'
+                """,
+                (from_user_id, to_user_id),
+            )
+            return cur.fetchone() is not None
+
+    def is_approved_follower(self, follower_id: str, followee_id: str) -> bool:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM follows WHERE follower_id = %s AND followee_id = %s",
+                (follower_id, followee_id),
+            )
+            return cur.fetchone() is not None

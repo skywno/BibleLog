@@ -3,27 +3,41 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class BibleReference(BaseModel):
     book_id: int = Field(ge=1, le=66)
     start_chapter: int
     start_verse: int
+    end_book_id: int | None = None
     end_chapter: int
     end_verse: int
+
+    @model_validator(mode="after")
+    def default_end_book_id(self) -> "BibleReference":
+        if self.end_book_id is None:
+            self.end_book_id = self.book_id
+        return self
+
+
+ProfileVisibility = Literal["public", "private"]
 
 
 class UserProfile(BaseModel):
     id: str
     nickname: str
     bio: str = ""
+    photo_url: str = ""
+    profile_visibility: ProfileVisibility = "public"
     is_logged_in: bool = True
 
 
 class UpdateUserProfileRequest(BaseModel):
     nickname: str | None = None
     bio: str | None = None
+    photo_url: str | None = None
+    profile_visibility: ProfileVisibility | None = None
 
 
 class OAuthAuthorizeResponse(BaseModel):
@@ -231,6 +245,7 @@ class UserSearchResult(BaseModel):
     id: str
     nickname: str
     bio: str = ""
+    photo_url: str | None = None
 
 
 class FriendRequest(BaseModel):
@@ -244,6 +259,18 @@ class FriendRequest(BaseModel):
 
 class SendFriendRequestBody(BaseModel):
     to_user_id: str
+
+
+FollowRequestStatus = Literal["pending", "accepted", "rejected"]
+
+
+class FollowRequest(BaseModel):
+    id: str
+    from_user_id: str
+    from_user_nickname: str
+    to_user_id: str
+    status: FollowRequestStatus
+    created_at: datetime
 
 
 class FollowUserSummary(BaseModel):
