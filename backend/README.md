@@ -12,7 +12,8 @@ backend/
 ├── user_service/         # /auth, /users (+ internal relation APIs)
 ├── note_service/         # /journal (+ internal note APIs)
 ├── feed_service/         # /feed (Redis ZSET + assembly)
-├── social_service/       # internal reactions/comments APIs
+├── social_service/       # /social (comments) + internal reactions
+├── notification_service/ # /notifications + WebSocket
 ├── reading_service/      # /reading
 ├── ai_service/           # /ai
 ├── schema/               # ScyllaDB + PostgreSQL DDL
@@ -42,13 +43,17 @@ curl -X POST "http://localhost:8000/auth/dev/login?email=demo@biblelog.app"
 
 | Path prefix | Service | Internal port |
 |-------------|---------|---------------|
-| `/auth`, `/users` | user-service | 8001 |
+| `/auth`, `/users`, `/friends`, `/follows`, `/churches`, `/small-groups` | user-service | 8001 |
 | `/journal` | note-service | 8002 |
+| `/social` | social-service | 8003 |
 | `/feed` | feed-service | 8004 |
 | `/reading` | reading-service | 8005 |
 | `/ai` | ai-service | 8006 |
+| `/notifications` | notification-service | 8007 |
 
-`social-service`는 `/internal/*`만 노출하며 Traefik public 라우트에 포함되지 않습니다.
+WebSocket: `ws://localhost:8000/notifications/ws?token=<JWT>`
+
+`social-service`는 public `/social/*`와 `/internal/*`를 모두 제공합니다.
 
 라우팅 설정: [`traefik/dynamic/routes.yml`](traefik/dynamic/routes.yml)
 
@@ -69,7 +74,8 @@ curl -X POST "http://localhost:8000/auth/dev/login?email=demo@biblelog.app"
 | `user_service` | `/auth`, `/users` | PostgreSQL |
 | `note_service` | `/journal` | ScyllaDB |
 | `feed_service` | `/feed` | Redis |
-| `social_service` | `/internal/*` | ScyllaDB |
+| `social_service` | `/social`, `/internal/*` | ScyllaDB |
+| `notification_service` | `/notifications`, WebSocket | PostgreSQL |
 | `reading_service` | `/reading` | ScyllaDB |
 | `ai_service` | `/ai` | PostgreSQL |
 

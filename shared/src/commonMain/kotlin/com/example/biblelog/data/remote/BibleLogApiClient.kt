@@ -2,7 +2,7 @@ package com.example.biblelog.data.remote
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -25,6 +25,7 @@ fun createJsonHttpClient(
     tokenHolder: AuthTokenHolder? = null,
 ): HttpClient {
     return createPlatformHttpClient().config {
+        install(WebSockets)
         install(ContentNegotiation) {
             json(
                 Json {
@@ -141,6 +142,64 @@ class BibleLogApiClient(
         body: ApiSendAiMessageRequestDto,
     ): ApiSendAiMessageResponseDto =
         authorizedPost("/ai/conversations/$conversationId/messages", body)
+
+    suspend fun searchUsers(query: String, limit: Int = 20): List<ApiUserSearchResultDto> =
+        authorizedGet("/users/search?q=$query&limit=$limit")
+
+    suspend fun listFriends(): List<ApiUserSearchResultDto> =
+        authorizedGet("/friends")
+
+    suspend fun sendFriendRequest(toUserId: String): ApiFriendRequestDto =
+        authorizedPost("/friends/requests", ApiSendFriendRequestDto(toUserId))
+
+    suspend fun acceptFriendRequest(requestId: String): ApiFriendRequestDto =
+        authorizedPostEmpty("/friends/requests/$requestId/accept")
+
+    suspend fun followUser(userId: String) {
+        httpClient.post("/follows/$userId") { authHeader() }
+    }
+
+    suspend fun unfollowUser(userId: String) {
+        authorizedDelete("/follows/$userId")
+    }
+
+    suspend fun listFollowing(): List<ApiFollowUserDto> =
+        authorizedGet("/follows")
+
+    suspend fun createComment(noteId: String, body: ApiCreateCommentRequestDto): ApiCommentDto =
+        authorizedPost("/social/notes/$noteId/comments", body)
+
+    suspend fun listComments(noteId: String, cursor: String? = null): ApiCommentPageResponseDto {
+        val cursorParam = cursor?.let { "&cursor=$it" }.orEmpty()
+        return authorizedGet("/social/notes/$noteId/comments?limit=20$cursorParam")
+    }
+
+    suspend fun listNotifications(cursor: String? = null): ApiNotificationPageResponseDto {
+        val cursorParam = cursor?.let { "&cursor=$it" }.orEmpty()
+        return authorizedGet("/notifications?limit=20$cursorParam")
+    }
+
+    suspend fun createChurch(body: ApiCreateChurchRequestDto): ApiChurchDto =
+        authorizedPost("/churches", body)
+
+    suspend fun joinChurch(churchId: String) {
+        httpClient.post("/churches/$churchId/members") { authHeader() }
+    }
+
+    suspend fun createSmallGroup(body: ApiCreateSmallGroupRequestDto): ApiSmallGroupDto =
+        authorizedPost("/small-groups", body)
+
+    suspend fun joinSmallGroup(groupId: String) {
+        httpClient.post("/small-groups/$groupId/members") { authHeader() }
+    }
+
+    suspend fun getMemberships(): ApiUserMembershipsDto =
+        authorizedGet("/me/memberships")
+
+    private suspend inline fun <reified T> authorizedPostEmpty(path: String): T =
+        httpClient.post(path) {
+            authHeader()
+        }.body()
 
     private suspend inline fun <reified T> authorizedGet(path: String): T =
         httpClient.get(path) {

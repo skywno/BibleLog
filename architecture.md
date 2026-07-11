@@ -642,9 +642,28 @@ sequenceDiagram
 | **0** | ✅ ScyllaDB Note, 서비스 패키지 물리 분리 |
 | **1** | ✅ Feed — Redis ZSET + cursor pagination |
 | **2** | ✅ Social 분리, Feed enrichment |
-| **3** | Relation·Organization visibility 완성 |
+| **3** | ✅ Relation·Organization public APIs (친구·팔로우·교회·소그룹) |
 | **4** | ✅ Traefik API Gateway, docker-compose 전체 스택 |
-| **5** | Notification, 인기순 score 파이프라인 고도화 |
+| **5** | ✅ Notification Service (REST + WebSocket); 인기순 score 파이프라인 고도화 예정 |
+| **3.5** | ✅ JVM `:simulation` 모듈 — 다중 사용자 부하·일관성 테스트 |
+
+### 12.1 Dual Social Graph (친구 + 팔로우)
+
+| 모델 | 관계 | 용도 |
+|------|------|------|
+| **Friendship** | 상호 (요청→수락) | `visibility=friends`, `filter=friends` |
+| **Follow** | 비대칭 (one-way) | 발견·`filter=following`; 친구 공개 노트 접근 **불가** |
+
+팔로우만으로는 친구 전용 노트를 볼 수 없다. 시뮬레이션·테스트 시 visibility와 action을 일치시켜야 한다.
+
+### 12.2 Notification Service
+
+| 엔드포인트 | 설명 |
+|-----------|------|
+| `GET /notifications` | 인앱 알림 목록 |
+| `WS /notifications/ws?token=<JWT>` | 실시간 이벤트 (`note_published`, `comment_created`, `reaction_toggled`, `friend_request`, `friend_accepted`, `follow`) |
+
+Kafka 이벤트를 구독해 대상 사용자에게 REST 저장 + WebSocket push.
 
 ---
 
@@ -653,10 +672,11 @@ sequenceDiagram
 | 패키지 | 주요 파일 | API |
 |--------|-----------|-----|
 | `traefik/` | `dynamic/routes.yml` | `:8000` (public routing) |
-| `user_service/` | `routers/auth.py`, `routers/users.py`, `repositories/` | `/auth/*`, `/users/*` |
+| `user_service/` | `routers/auth.py`, `routers/users.py`, `routers/relations.py`, `routers/organizations.py` | `/auth/*`, `/users/*`, `/friends/*`, `/follows/*`, `/churches/*`, `/small-groups/*` |
 | `note_service/` | `service.py`, `router.py`, `repositories/` | `/journal/*` |
 | `feed_service/` | `service.py`, `cache.py`, `cursor.py`, `router.py` | `/feed` |
-| `social_service/` | `service.py`, `repositories/` | (Feed enrichment) |
+| `social_service/` | `service.py`, `router.py`, `repositories/` | `/social/*`, `/internal/*` |
+| `notification_service/` | `service.py`, `router.py`, `websocket_hub.py` | `/notifications`, `WS /notifications/ws` |
 | `reading_service/` | `service.py`, `router.py`, `repositories/` | `/reading/*` |
 | `ai_service/` | `providers.py`, `router.py` | `/ai/*` |
 | `common/` | `models.py`, `config.py`, `db/`, `events/kafka_bus.py`, `contracts/` | — |
@@ -671,6 +691,7 @@ OpenAPI 계약 [`openapi/biblelog-api.yaml`](./openapi/biblelog-api.yaml). Feed 
 
 | 버전 | 날짜 | 내용 |
 |------|------|------|
+| 1.4 | 2026-07-11 | Phase 3 완료 — 친구·팔로우·조직·댓글·알림 WebSocket, simulation 모듈 |
 | 1.3 | 2026-07-09 | Traefik API Gateway — FastAPI gateway 제거, distributed 전용 |
 | 1.2 | 2026-07-09 | Distributed 모드 — 서비스별 Dockerfile, docker-compose 전체 스택, internal HTTP API |
 | 1.1 | 2026-07-09 | `backend/` monorepo — 서비스별 물리 패키지 분리, Gateway 조합 |

@@ -1,5 +1,6 @@
 package com.example.biblelog.data.mapper
 
+import com.example.biblelog.data.remote.ApiCommentDto
 import com.example.biblelog.data.remote.ApiAiMessageDto
 import com.example.biblelog.data.remote.ApiBibleReferenceDto
 import com.example.biblelog.data.remote.ApiFeedItemDto
@@ -22,6 +23,7 @@ import com.example.biblelog.domain.model.ReadingProgress
 import com.example.biblelog.domain.model.ReadingRecord
 import com.example.biblelog.domain.model.ReadingStats
 import com.example.biblelog.domain.model.ReactionCount
+import com.example.biblelog.domain.model.Comment
 import com.example.biblelog.domain.model.UserProfile
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -117,6 +119,7 @@ fun FeedFilter.toApi(): String = when (this) {
     FeedFilter.SMALL_GROUP -> "small_group"
     FeedFilter.CHURCH -> "church"
     FeedFilter.FRIENDS -> "friends"
+    FeedFilter.FOLLOWING -> "following"
 }
 
 fun FeedSort.toApi(): String = when (this) {
@@ -168,6 +171,15 @@ fun String.toReaction(): FaithReaction = when (this) {
     "amen" -> FaithReaction.AMEN
     else -> FaithReaction.GRACE
 }
+
+fun ApiCommentDto.toDomain() = Comment(
+    id = id,
+    noteId = noteId,
+    authorId = authorId,
+    authorName = authorName,
+    content = content,
+    createdAt = createdAt.toInstant(),
+)
 
 fun String.toInstant(): Instant {
     val normalized = when {

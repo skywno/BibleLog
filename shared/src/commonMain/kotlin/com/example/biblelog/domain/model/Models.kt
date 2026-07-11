@@ -36,6 +36,7 @@ enum class FeedFilter {
     SMALL_GROUP,
     CHURCH,
     FRIENDS,
+    FOLLOWING,
 }
 
 enum class FeedSort {

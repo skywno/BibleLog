@@ -14,7 +14,13 @@ tags:
   - name: auth
     description: OAuth 로그인 및 세션
   - name: users
-    description: 프로필
+    description: 프로필 및 사용자 검색
+  - name: relations
+    description: 친구 요청 및 팔로우
+  - name: social
+    description: 댓글
+  - name: notifications
+    description: 인앱 알림 및 WebSocket
   - name: reading
     description: 성경 읽기 기록 및 진행률
   - name: journal
@@ -368,6 +374,124 @@ paths:
               schema:
                 $ref: '#/components/schemas/SendAiMessageResponse'
 
+  /users/search:
+    get:
+      tags: [users]
+      operationId: searchUsers
+      summary: 닉네임 prefix로 사용자 검색
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserSearchResult' }
+
+  /friends:
+    get:
+      tags: [relations]
+      operationId: listFriends
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserSearchResult' }
+
+  /friends/requests:
+    post:
+      tags: [relations]
+      operationId: sendFriendRequest
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendFriendRequestBody' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FriendRequest' }
+
+  /follows/{userId}:
+    post:
+      tags: [relations]
+      operationId: followUser
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Followed }
+    delete:
+      tags: [relations]
+      operationId: unfollowUser
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: Unfollowed }
+
+  /social/notes/{noteId}/comments:
+    get:
+      tags: [social]
+      operationId: listComments
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommentPageResponse' }
+    post:
+      tags: [social]
+      operationId: createComment
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/NoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommentRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Comment' }
+
+  /notifications:
+    get:
+      tags: [notifications]
+      operationId: listNotifications
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPageResponse' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -639,7 +763,7 @@ components:
 
     FeedFilter:
       type: string
-      enum: [all, small_group, church, friends]
+      enum: [all, small_group, church, friends, following]
       default: all
 
     FeedSort:
@@ -722,3 +846,76 @@ components:
       properties:
         detail:
           type: string
+
+    UserSearchResult:
+      type: object
+      required: [id, nickname]
+      properties:
+        id: { type: string }
+        nickname: { type: string }
+        bio: { type: string }
+
+    FriendRequest:
+      type: object
+      required: [id, from_user_id, to_user_id, status, created_at]
+      properties:
+        id: { type: string }
+        from_user_id: { type: string }
+        from_user_nickname: { type: string }
+        to_user_id: { type: string }
+        status: { type: string, enum: [pending, accepted, rejected] }
+        created_at: { type: string, format: date-time }
+
+    SendFriendRequestBody:
+      type: object
+      required: [to_user_id]
+      properties:
+        to_user_id: { type: string }
+
+    Comment:
+      type: object
+      required: [id, note_id, author_id, author_name, content, created_at, updated_at]
+      properties:
+        id: { type: string }
+        note_id: { type: string }
+        author_id: { type: string }
+        author_name: { type: string }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CreateCommentRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+
+    CommentPageResponse:
+      type: object
+      required: [items, has_more]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Comment' }
+        next_cursor: { type: string, nullable: true }
+        has_more: { type: boolean }
+
+    NotificationItem:
+      type: object
+      required: [id, event_type, created_at]
+      properties:
+        id: { type: string }
+        event_type: { type: string }
+        payload: { type: object, additionalProperties: true }
+        read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    NotificationPageResponse:
+      type: object
+      required: [items, has_more]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/NotificationItem' }
+        next_cursor: { type: string, nullable: true }
+        has_more: { type: boolean }

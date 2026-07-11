@@ -2,6 +2,7 @@ package com.example.biblelog.data
 
 import com.example.biblelog.data.mapper.toApi
 import com.example.biblelog.data.mapper.toDomain
+import com.example.biblelog.data.remote.ApiCreateCommentRequestDto
 import com.example.biblelog.data.mapper.toDto
 import com.example.biblelog.data.remote.ApiCreateReadingRecordRequestDto
 import com.example.biblelog.data.remote.ApiSendAiMessageRequestDto
@@ -138,8 +139,11 @@ class ApiBackedBibleLogRepository(
         refreshFeed(reset = true)
     }
 
-    override suspend fun addComment(noteId: String, content: String): Result<Comment> =
-        Result.failure(UnsupportedOperationException("댓글 API는 다음 단계에서 연결됩니다."))
+    override suspend fun addComment(noteId: String, content: String): Result<Comment> = runCatching {
+        val comment = apiClient.createComment(noteId, ApiCreateCommentRequestDto(content)).toDomain()
+        refreshFeed(reset = true)
+        comment
+    }
 
     override suspend fun loadFeed(
         filter: FeedFilter,

@@ -56,6 +56,7 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
         FeedFilter.SMALL_GROUP to "소그룹",
         FeedFilter.CHURCH to "교회",
         FeedFilter.FRIENDS to "친구",
+        FeedFilter.FOLLOWING to "팔로잉",
     )
     val feedFilter = filters[filterIndex].first
     val feedSort = if (sortIndex == 1) FeedSort.POPULAR else FeedSort.LATEST

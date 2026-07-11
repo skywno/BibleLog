@@ -163,3 +163,107 @@ data class ApiUpdateUserProfileRequestDto(
 data class ApiErrorResponseDto(
     val detail: String,
 )
+
+@Serializable
+data class ApiUserSearchResultDto(
+    val id: String,
+    val nickname: String,
+    val bio: String = "",
+)
+
+@Serializable
+data class ApiFriendRequestDto(
+    val id: String,
+    @SerialName("from_user_id") val fromUserId: String,
+    @SerialName("from_user_nickname") val fromUserNickname: String,
+    @SerialName("to_user_id") val toUserId: String,
+    val status: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class ApiSendFriendRequestDto(
+    @SerialName("to_user_id") val toUserId: String,
+)
+
+@Serializable
+data class ApiFollowUserDto(
+    val id: String,
+    val nickname: String,
+    val bio: String = "",
+)
+
+@Serializable
+data class ApiChurchDto(
+    val id: String,
+    val name: String,
+    val description: String = "",
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class ApiCreateChurchRequestDto(
+    val name: String,
+    val description: String = "",
+)
+
+@Serializable
+data class ApiSmallGroupDto(
+    val id: String,
+    @SerialName("church_id") val churchId: String? = null,
+    val name: String,
+    @SerialName("leader_id") val leaderId: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class ApiCreateSmallGroupRequestDto(
+    val name: String,
+    @SerialName("church_id") val churchId: String? = null,
+)
+
+@Serializable
+data class ApiUserMembershipsDto(
+    @SerialName("church_id") val churchId: String? = null,
+    @SerialName("group_ids") val groupIds: List<String> = emptyList(),
+)
+
+@Serializable
+data class ApiCommentDto(
+    val id: String,
+    @SerialName("note_id") val noteId: String,
+    @SerialName("author_id") val authorId: String,
+    @SerialName("author_name") val authorName: String,
+    val content: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+data class ApiCreateCommentRequestDto(
+    val content: String,
+)
+
+@Serializable
+data class ApiCommentPageResponseDto(
+    val items: List<ApiCommentDto>,
+    @SerialName("next_cursor") val nextCursor: String? = null,
+    @SerialName("has_more") val hasMore: Boolean = false,
+)
+
+@Serializable
+data class ApiNotificationItemDto(
+    val id: String,
+    @SerialName("event_type") val eventType: String,
+    val payload: Map<String, String> = emptyMap(),
+    val read: Boolean = false,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class ApiNotificationPageResponseDto(
+    val items: List<ApiNotificationItemDto>,
+    @SerialName("next_cursor") val nextCursor: String? = null,
+    @SerialName("has_more") val hasMore: Boolean = false,
+)
