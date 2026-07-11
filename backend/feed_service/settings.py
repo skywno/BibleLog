@@ -7,6 +7,7 @@ from common.settings.base import BaseServiceSettings
 
 
 class FeedServiceSettings(BaseServiceSettings):
+    storage_backend: Literal["memory", "scylla"] = "memory"
     redis_url: str = "redis://localhost:6379/0"
     redis_enabled: bool = True
     feed_latest_ttl_seconds: int = 60
