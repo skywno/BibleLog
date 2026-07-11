@@ -7,10 +7,5 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
         }
-        .onOpenURL { url in
-            if url.scheme == "biblelog" {
-                OAuthRedirectKt.handleOAuthRedirect(url: url.absoluteString)
-            }
-        }
     }
 }
