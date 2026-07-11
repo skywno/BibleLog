@@ -9,6 +9,7 @@ from common.app_factory import create_service_app
 from common.clients.http import close_async_http_client
 from common.db.redis_client import close_redis
 from common.events.kafka_bus import close_event_bus
+from common.telemetry import setup_telemetry
 from feed_service.container import build_feed_container, reset_feed_container, set_feed_container
 from feed_service.internal_router import router as internal_router
 from feed_service.router import router as feed_router
@@ -31,6 +32,8 @@ async def lifespan(_: FastAPI):
     close_redis()
     reset_feed_container()
 
+
+setup_telemetry("feed-service", version="0.4.0")
 
 app = create_service_app(
     title="BibleLog Feed Service",

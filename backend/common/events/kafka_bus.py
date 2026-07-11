@@ -10,10 +10,39 @@ from typing import Any
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 from common.settings.base import BaseServiceSettings
+from common.telemetry import traces_enabled
 
 logger = logging.getLogger(__name__)
 
 EventHandler = Callable[[dict[str, Any]], Awaitable[None] | None]
+
+KafkaHeaders = list[tuple[str, bytes]] | None
+
+
+def _inject_kafka_headers() -> KafkaHeaders:
+    if not traces_enabled():
+        return None
+
+    from opentelemetry.propagate import inject
+
+    carrier: dict[str, str] = {}
+    inject(carrier)
+    if not carrier:
+        return None
+    return [(key, value.encode("utf-8")) for key, value in carrier.items()]
+
+
+def _extract_kafka_context(headers: KafkaHeaders):
+    if not traces_enabled() or not headers:
+        from opentelemetry import context
+
+        return context.get_current()
+
+    from opentelemetry import context
+    from opentelemetry.propagate import extract
+
+    carrier = {key: value.decode("utf-8") for key, value in headers}
+    return extract(carrier)
 
 
 class KafkaEventBus:
@@ -75,6 +104,28 @@ class KafkaEventBus:
             return
 
         message = json.dumps({"type": event_type, "payload": payload}).encode()
+
+        if traces_enabled():
+            from opentelemetry import trace
+            from opentelemetry.trace import SpanKind
+
+            tracer = trace.get_tracer(__name__)
+            with tracer.start_as_current_span(
+                "kafka.publish",
+                kind=SpanKind.PRODUCER,
+            ) as span:
+                span.set_attribute("messaging.system", "kafka")
+                span.set_attribute("messaging.destination.name", self._settings.kafka_topic)
+                span.set_attribute("messaging.operation", "publish")
+                span.set_attribute("messaging.message.type", event_type)
+                headers = _inject_kafka_headers()
+                await self._producer.send_and_wait(
+                    self._settings.kafka_topic,
+                    message,
+                    headers=headers,
+                )
+            return
+
         await self._producer.send_and_wait(self._settings.kafka_topic, message)
 
     async def _consume_loop(self) -> None:
@@ -87,7 +138,27 @@ class KafkaEventBus:
                 continue
             event_type = data.get("type")
             payload = data.get("payload") or {}
-            if isinstance(event_type, str):
+            if not isinstance(event_type, str):
+                continue
+
+            parent_context = _extract_kafka_context(record.headers)
+            if traces_enabled():
+                from opentelemetry import trace
+                from opentelemetry.trace import SpanKind
+
+                tracer = trace.get_tracer(__name__)
+                with tracer.start_as_current_span(
+                    "kafka.consume",
+                    context=parent_context,
+                    kind=SpanKind.CONSUMER,
+                ) as span:
+                    span.set_attribute("messaging.system", "kafka")
+                    span.set_attribute("messaging.destination.name", self._settings.kafka_topic)
+                    span.set_attribute("messaging.operation", "process")
+                    span.set_attribute("messaging.message.type", event_type)
+                    span.set_attribute("messaging.kafka.consumer.group", self._group_id)
+                    await self._dispatch_local(event_type, payload)
+            else:
                 await self._dispatch_local(event_type, payload)
 
     async def _dispatch_local(self, event_type: str, payload: dict[str, Any]) -> None:

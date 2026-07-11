@@ -1,18 +1,69 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from cassandra.cluster import Cluster, NoHostAvailable, Session
 from cassandra.policies import DCAwareRoundRobinPolicy
 
 from common.config import Settings
+from common.telemetry import traces_enabled
 
 logger = logging.getLogger(__name__)
 
 _session: Session | None = None
+
+_TABLE_PATTERN = re.compile(
+    r"\b(?:FROM|INTO|UPDATE|TABLE)\s+([a-z_][a-z0-9_]*)",
+    re.IGNORECASE,
+)
+
+
+def _statement_table(statement: str) -> str | None:
+    match = _TABLE_PATTERN.search(statement)
+    return match.group(1) if match else None
+
+
+def _operation_name(statement: str) -> str:
+    first = statement.strip().split(None, 1)[0].upper()
+    return first if first else "QUERY"
+
+
+def traced_execute(session: Session, statement: str, parameters: Any = None):
+    if not traces_enabled():
+        return session.execute(statement, parameters)
+
+    from opentelemetry import trace
+    from opentelemetry.trace import SpanKind, Status, StatusCode
+
+    table = _statement_table(statement)
+    operation = _operation_name(statement)
+    span_name = f"scylla.{operation.lower()}"
+    if table:
+        span_name = f"{span_name} {table}"
+
+    tracer = trace.get_tracer("common.db.scylla")
+    with tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+        span.set_attribute("db.system", "scylla")
+        span.set_attribute("db.operation", operation)
+        if table:
+            span.set_attribute("db.cassandra.table", table)
+        start = time.perf_counter()
+        try:
+            result = session.execute(statement, parameters)
+            span.set_status(Status(StatusCode.OK))
+            return result
+        except Exception as exc:
+            span.record_exception(exc)
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_attribute("error.type", type(exc).__name__)
+            raise
+        finally:
+            span.set_attribute("db.duration_ms", (time.perf_counter() - start) * 1000)
 
 
 def get_scylla_session(settings: Settings) -> Session | None:

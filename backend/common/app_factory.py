@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from common.exceptions import register_exception_handlers
+from common.telemetry import instrument_app
 
 logger = logging.getLogger(__name__)
 
@@ -37,4 +38,5 @@ def create_service_app(
     def health() -> dict[str, str]:
         return {"status": "ok", "service": service_name}
 
+    instrument_app(app)
     return app

@@ -10,6 +10,7 @@ from ai_service.router import router as ai_router
 from ai_service.settings import get_ai_settings
 from common.app_factory import create_service_app
 from common.db.postgres import close_postgres
+from common.telemetry import setup_telemetry
 
 logger = logging.getLogger(__name__)
 settings = get_ai_settings()
@@ -24,6 +25,8 @@ async def lifespan(_: FastAPI):
     close_postgres()
     reset_ai_container()
 
+
+setup_telemetry("ai-service", version="0.4.0")
 
 app = create_service_app(
     title="BibleLog AI Service",

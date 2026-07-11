@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from cassandra.cluster import Session
 
-from common.db.scylla import scylla_date, scylla_timestamp
+from common.db.scylla import scylla_date, scylla_timestamp, traced_execute
 from common.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
 from reading_service.repositories.reading import ReadingRepository
 
@@ -27,7 +27,7 @@ class ScyllaReadingRepository(ReadingRepository):
             created_at=datetime.now(UTC),
         )
         reference = record.reference
-        self._session.execute(
+        traced_execute(self._session,
             """
             INSERT INTO reading_records_by_user (
                 user_id, date, record_id, book_id, start_chapter, start_verse,
@@ -51,7 +51,7 @@ class ScyllaReadingRepository(ReadingRepository):
         return record
 
     def list_records(self, user_id: str) -> list[ReadingRecord]:
-        rows = self._session.execute(
+        rows = traced_execute(self._session,
             """
             SELECT record_id, date, minutes_read, created_at, reference_json
             FROM reading_records_by_user

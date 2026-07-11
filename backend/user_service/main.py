@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from common.app_factory import create_service_app
 from common.db.postgres import close_postgres
+from common.telemetry import setup_telemetry
 from user_service.container import build_user_container, reset_user_container, set_user_container
 from user_service.internal_router import router as internal_router
 from user_service.routers.auth import router as auth_router
@@ -26,6 +27,8 @@ async def lifespan(_: FastAPI):
     close_postgres()
     reset_user_container()
 
+
+setup_telemetry("user-service", version="0.4.0")
 
 app = create_service_app(
     title="BibleLog User Service",

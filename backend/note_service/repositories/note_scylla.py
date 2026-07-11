@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from cassandra.cluster import Session
 
-from common.db.scylla import scylla_timestamp
+from common.db.scylla import scylla_timestamp, traced_execute
 
 from common.domain import NoteRecord
 from common.models import UpsertJournalNoteRequest
@@ -68,7 +68,7 @@ class ScyllaNoteRepository(NoteRepository):
         self._write(deleted)
 
     def get_by_id(self, note_id: str) -> NoteRecord | None:
-        row = self._session.execute(
+        row = traced_execute(self._session,
             "SELECT * FROM notes_by_id WHERE note_id = %s",
             (note_id,),
         ).one()
@@ -82,7 +82,7 @@ class ScyllaNoteRepository(NoteRepository):
         return _record_from_row(data)
 
     def list_by_author(self, author_id: str) -> list[NoteRecord]:
-        rows = self._session.execute(
+        rows = traced_execute(self._session,
             """
             SELECT note_id, author_id, content, prayer_topic, emotion, visibility,
                    church_id, group_ids, reference, created_at, updated_at, deleted_at
@@ -108,7 +108,7 @@ class ScyllaNoteRepository(NoteRepository):
         buckets = {_bucket(since), _bucket(datetime.now(UTC))}
         records: list[NoteRecord] = []
         for bucket in buckets:
-            rows = self._session.execute(
+            rows = traced_execute(self._session,
                 """
                 SELECT note_id FROM notes_by_visibility
                 WHERE visibility = %s AND bucket = %s AND created_at >= %s
@@ -129,7 +129,7 @@ class ScyllaNoteRepository(NoteRepository):
     ) -> list[NoteRecord]:
         records: list[NoteRecord] = []
         for author_id in author_ids:
-            rows = self._session.execute(
+            rows = traced_execute(self._session,
                 """
                 SELECT note_id, author_id, content, prayer_topic, emotion, visibility,
                        church_id, group_ids, reference, created_at, updated_at, deleted_at
@@ -150,7 +150,7 @@ class ScyllaNoteRepository(NoteRepository):
 
     def _write(self, record: NoteRecord) -> None:
         reference = _reference_to_json(record.reference)
-        self._session.execute(
+        traced_execute(self._session,
             """
             INSERT INTO notes_by_id (
                 note_id, author_id, created_at, content, prayer_topic, emotion,
@@ -172,7 +172,7 @@ class ScyllaNoteRepository(NoteRepository):
                 record.deleted_at,
             ),
         )
-        self._session.execute(
+        traced_execute(self._session,
             """
             INSERT INTO notes_by_author (
                 author_id, created_at, note_id, content, prayer_topic, emotion,
@@ -195,7 +195,7 @@ class ScyllaNoteRepository(NoteRepository):
             ),
         )
         if record.visibility != "private" and record.deleted_at is None:
-            self._session.execute(
+            traced_execute(self._session,
                 """
                 INSERT INTO notes_by_visibility (
                     visibility, bucket, created_at, note_id, author_id

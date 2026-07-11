@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from cassandra.cluster import Session
 
+from common.db.scylla import traced_execute
 from common.models import FAITH_REACTIONS, FaithReaction
 from social_service.repositories.social import SocialRepository
 
@@ -18,17 +19,17 @@ class ScyllaSocialRepository(SocialRepository):
         user_id: str,
         reaction: FaithReaction,
     ) -> FaithReaction | None:
-        existing = self._session.execute(
+        existing = traced_execute(self._session,
             "SELECT reaction_type FROM reactions_by_note WHERE note_id = %s AND user_id = %s",
             (note_id, user_id),
         ).one()
         if existing and existing._asdict()["reaction_type"] == reaction:
-            self._session.execute(
+            traced_execute(self._session,
                 "DELETE FROM reactions_by_note WHERE note_id = %s AND user_id = %s",
                 (note_id, user_id),
             )
             return None
-        self._session.execute(
+        traced_execute(self._session,
             """
             INSERT INTO reactions_by_note (note_id, user_id, reaction_type, created_at)
             VALUES (%s, %s, %s, %s)
@@ -51,7 +52,7 @@ class ScyllaSocialRepository(SocialRepository):
     ) -> dict[str, list[tuple[FaithReaction, int, bool]]]:
         result: dict[str, list[tuple[FaithReaction, int, bool]]] = {}
         for note_id in note_ids:
-            rows = self._session.execute(
+            rows = traced_execute(self._session,
                 "SELECT user_id, reaction_type FROM reactions_by_note WHERE note_id = %s",
                 (note_id,),
             )
@@ -71,7 +72,7 @@ class ScyllaSocialRepository(SocialRepository):
         return result
 
     def get_comment_count(self, note_id: str) -> int:
-        rows = self._session.execute(
+        rows = traced_execute(self._session,
             "SELECT comment_id FROM comments_by_note WHERE note_id = %s",
             (note_id,),
         )
@@ -81,7 +82,7 @@ class ScyllaSocialRepository(SocialRepository):
         return {note_id: self.get_comment_count(note_id) for note_id in note_ids}
 
     def total_engagement(self, note_id: str) -> tuple[int, int]:
-        reactions = self._session.execute(
+        reactions = traced_execute(self._session,
             "SELECT reaction_type FROM reactions_by_note WHERE note_id = %s",
             (note_id,),
         )
