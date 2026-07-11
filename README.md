@@ -37,6 +37,17 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
     - JS target: `./gradlew :shared:jsTest`
 - iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
 
+### Multi-user simulation tests
+
+Headless JVM load/integration tests against a running backend (`backend/docker compose up`):
+
+```bash
+./gradlew :simulation:test
+BIBLELOG_LOAD_TEST=true ./gradlew :simulation:loadTest
+```
+
+See [`docs/simulation-framework.md`](docs/simulation-framework.md).
+
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
@@ -45,4 +56,4 @@ Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-mu
 
 We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack
 channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).# BibleLog
+If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
