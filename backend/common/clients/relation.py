@@ -52,3 +52,19 @@ class HttpRelationClient(RelationReader):
         )
         response.raise_for_status()
         return response.json()
+
+    async def list_following_ids(self, user_id: str) -> list[str]:
+        response = await self._client.get(
+            f"{self._base}/internal/relations/following/{user_id}",
+            headers=self._headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def list_follower_ids(self, user_id: str) -> list[str]:
+        response = await self._client.get(
+            f"{self._base}/internal/relations/followers/{user_id}",
+            headers=self._headers(),
+        )
+        response.raise_for_status()
+        return response.json()

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.clients.http import get_async_http_client
+from common.clients.user import HttpUserClient
 from common.db.scylla import get_scylla_session
 from common.events.kafka_bus import KafkaEventBus, get_event_bus
 from social_service.repositories.social import SocialRepository
@@ -15,6 +17,7 @@ from social_service.settings import SocialServiceSettings, get_social_settings
 class SocialContainer:
     settings: SocialServiceSettings
     social: SocialRepository
+    users: HttpUserClient
     social_service: SocialService
     event_bus: KafkaEventBus
 
@@ -32,11 +35,14 @@ def build_social_container(settings: SocialServiceSettings | None = None) -> Soc
     else:
         social = MemorySocialRepository()
 
+    http_client = get_async_http_client()
+    users = HttpUserClient(settings, http_client)
     event_bus = get_event_bus(settings, group_id="social-service")
-    social_service = SocialService(social, event_bus)
+    social_service = SocialService(social, users, event_bus)
     return SocialContainer(
         settings=settings,
         social=social,
+        users=users,
         social_service=social_service,
         event_bus=event_bus,
     )

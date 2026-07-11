@@ -44,3 +44,13 @@ def list_group_members_internal(
 @router.get("/relations/church-members/{church_id}", dependencies=[Depends(verify_internal_token)])
 def list_church_members_internal(church_id: str, container: UserContainerDep) -> list[str]:
     return container.relations.list_church_member_ids(church_id)
+
+
+@router.get("/relations/following/{user_id}", dependencies=[Depends(verify_internal_token)])
+def list_following_internal(user_id: str, container: UserContainerDep) -> list[str]:
+    return container.relations.list_following_ids(user_id)
+
+
+@router.get("/relations/followers/{user_id}", dependencies=[Depends(verify_internal_token)])
+def list_followers_internal(user_id: str, container: UserContainerDep) -> list[str]:
+    return container.relations.list_follower_ids(user_id)

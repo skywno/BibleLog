@@ -75,7 +75,9 @@ class ReadingStats(BaseModel):
 Emotion = Literal["gratitude", "joy", "peace", "sadness", "moved"]
 NoteVisibility = Literal["public", "friends", "small_group", "church", "private"]
 FaithReaction = Literal["empathy", "pray_together", "amen", "grace"]
-FeedFilter = Literal["all", "small_group", "church", "friends"]
+FeedFilter = Literal["all", "small_group", "church", "friends", "following"]
+FriendRequestStatus = Literal["pending", "accepted", "rejected"]
+GroupMemberRole = Literal["member", "leader"]
 FeedSort = Literal["latest", "popular"]
 AiConversationMode = Literal["chat", "prayer"]
 
@@ -222,3 +224,97 @@ class SendAiMessageResponse(BaseModel):
     user_message: AiMessage
     assistant_message: AiMessage
     provider: str
+
+
+class UserSearchResult(BaseModel):
+    id: str
+    nickname: str
+    bio: str = ""
+
+
+class FriendRequest(BaseModel):
+    id: str
+    from_user_id: str
+    from_user_nickname: str
+    to_user_id: str
+    status: FriendRequestStatus
+    created_at: datetime
+
+
+class SendFriendRequestBody(BaseModel):
+    to_user_id: str
+
+
+class FollowUserSummary(BaseModel):
+    id: str
+    nickname: str
+    bio: str = ""
+
+
+class Church(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    created_by: str
+    created_at: datetime
+
+
+class CreateChurchRequest(BaseModel):
+    name: str
+    description: str = ""
+
+
+class SmallGroup(BaseModel):
+    id: str
+    church_id: str | None = None
+    name: str
+    leader_id: str
+    created_at: datetime
+
+
+class CreateSmallGroupRequest(BaseModel):
+    name: str
+    church_id: str | None = None
+
+
+class UserMembershipsResponse(BaseModel):
+    church_id: str | None = None
+    group_ids: list[str] = Field(default_factory=list)
+
+
+class Comment(BaseModel):
+    id: str
+    note_id: str
+    author_id: str
+    author_name: str
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CreateCommentRequest(BaseModel):
+    content: str
+
+
+class UpdateCommentRequest(BaseModel):
+    content: str
+
+
+class CommentPageResponse(BaseModel):
+    items: list[Comment]
+    next_cursor: str | None = None
+    has_more: bool = False
+
+
+class NotificationItem(BaseModel):
+    id: str
+    event_type: str
+    payload: dict = Field(default_factory=dict)
+    read: bool = False
+    created_at: datetime
+
+
+class NotificationPageResponse(BaseModel):
+    items: list[NotificationItem]
+    next_cursor: str | None = None
+    has_more: bool = False

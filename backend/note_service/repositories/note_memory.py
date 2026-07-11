@@ -11,8 +11,15 @@ class MemoryNoteRepository(NoteRepository):
     def __init__(self) -> None:
         self._by_id: dict[str, NoteRecord] = {}
 
-    def create(self, author_id: str, request: UpsertJournalNoteRequest) -> NoteRecord:
-        record = _build_record(author_id, request)
+    def create(
+        self,
+        author_id: str,
+        request: UpsertJournalNoteRequest,
+        *,
+        church_id: str | None = None,
+        group_ids: set[str] | None = None,
+    ) -> NoteRecord:
+        record = _build_record(author_id, request, church_id=church_id, group_ids=group_ids)
         self._by_id[record.note_id] = record
         return record
 

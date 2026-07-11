@@ -35,7 +35,15 @@ class NoteService:
         self._event_bus = event_bus
 
     async def create(self, author_id: str, request: UpsertJournalNoteRequest) -> MeditationNote:
-        record = self._notes.create(author_id, request)
+        membership = await self._relations.get_membership(author_id)
+        church_id = membership.church_id if request.visibility == "church" else None
+        group_ids = membership.group_ids if request.visibility == "small_group" else set()
+        record = self._notes.create(
+            author_id,
+            request,
+            church_id=church_id,
+            group_ids=group_ids,
+        )
         await self._event_bus.publish(
             "NotePublished",
             {"note_id": record.note_id, "author_id": author_id, "visibility": record.visibility},

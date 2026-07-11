@@ -146,6 +146,9 @@ class FeedService:
         if feed_filter == "friends":
             return friend_ids
 
+        if feed_filter == "following":
+            return await self._relations.list_following_ids(viewer_id)
+
         if feed_filter == "small_group":
             if not membership.group_ids:
                 return []

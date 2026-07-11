@@ -39,3 +39,25 @@ class SocialRepository(ABC):
     @abstractmethod
     def total_engagement(self, note_id: str) -> tuple[int, int]:
         """Return (reaction_total, comment_count)."""
+
+    @abstractmethod
+    def add_comment(self, note_id: str, author_id: str, content: str) -> dict: ...
+
+    @abstractmethod
+    def list_comments(
+        self,
+        note_id: str,
+        *,
+        cursor_created_at: datetime | None = None,
+        cursor_comment_id: str | None = None,
+        limit: int = 20,
+    ) -> tuple[list[dict], str | None, bool]: ...
+
+    @abstractmethod
+    def get_comment(self, comment_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def update_comment(self, comment_id: str, author_id: str, content: str) -> dict: ...
+
+    @abstractmethod
+    def delete_comment(self, comment_id: str, author_id: str) -> None: ...

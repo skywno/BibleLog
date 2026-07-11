@@ -21,8 +21,15 @@ class ScyllaNoteRepository(NoteRepository):
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def create(self, author_id: str, request: UpsertJournalNoteRequest) -> NoteRecord:
-        record = _build_record(author_id, request)
+    def create(
+        self,
+        author_id: str,
+        request: UpsertJournalNoteRequest,
+        *,
+        church_id: str | None = None,
+        group_ids: set[str] | None = None,
+    ) -> NoteRecord:
+        record = _build_record(author_id, request, church_id=church_id, group_ids=group_ids)
         self._write(record)
         return record
 

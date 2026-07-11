@@ -50,6 +50,7 @@ class Settings(BaseServiceSettings):
 
     user_service_url: str = "http://user-service:8001"
     note_service_url: str = "http://note-service:8002"
+    notification_service_url: str = "http://notification-service:8007"
     social_service_url: str = "http://social-service:8003"
     feed_service_url: str = "http://feed-service:8004"
     reading_service_url: str = "http://reading-service:8005"

@@ -37,6 +37,30 @@ http:
         - web
       service: ai-service
 
+    social:
+      rule: PathPrefix(`/social`)
+      entryPoints:
+        - web
+      service: social-service
+
+    friends:
+      rule: PathPrefix(`/friends`) || PathPrefix(`/follows`) || PathPrefix(`/followers`)
+      entryPoints:
+        - web
+      service: user-service
+
+    organizations:
+      rule: PathPrefix(`/churches`) || PathPrefix(`/small-groups`) || Path(`/me/memberships`)
+      entryPoints:
+        - web
+      service: user-service
+
+    notifications:
+      rule: PathPrefix(`/notifications`)
+      entryPoints:
+        - web
+      service: notification-service
+
   services:
     user-service:
       loadBalancer:
@@ -62,3 +86,13 @@ http:
       loadBalancer:
         servers:
           - url: http://ai-service:8006
+
+    social-service:
+      loadBalancer:
+        servers:
+          - url: http://social-service:8003
+
+    notification-service:
+      loadBalancer:
+        servers:
+          - url: http://notification-service:8007

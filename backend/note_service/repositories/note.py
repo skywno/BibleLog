@@ -15,6 +15,9 @@ class NoteRepository(ABC):
         self,
         author_id: str,
         request: UpsertJournalNoteRequest,
+        *,
+        church_id: str | None = None,
+        group_ids: set[str] | None = None,
     ) -> NoteRecord: ...
 
     @abstractmethod
@@ -87,8 +90,21 @@ def _build_record(
     request: UpsertJournalNoteRequest,
     note_id: str | None = None,
     created_at: datetime | None = None,
+    *,
+    church_id: str | None = None,
+    group_ids: set[str] | None = None,
 ) -> NoteRecord:
     now = datetime.now(UTC)
+    visibility = request.visibility
+    resolved_church_id = church_id
+    resolved_group_ids = set(group_ids or set())
+    if visibility == "church":
+        resolved_group_ids = set()
+    elif visibility == "small_group":
+        resolved_church_id = None
+    elif visibility not in {"church", "small_group"}:
+        resolved_church_id = None
+        resolved_group_ids = set()
     return NoteRecord(
         note_id=note_id or str(uuid.uuid4()),
         author_id=author_id,
@@ -97,8 +113,8 @@ def _build_record(
         emotion=request.emotion,
         reference=request.reference,
         visibility=request.visibility,
-        church_id=None,
-        group_ids=set(),
+        church_id=resolved_church_id,
+        group_ids=resolved_group_ids,
         created_at=created_at or now,
         updated_at=now,
         deleted_at=None,

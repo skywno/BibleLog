@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS comments_by_note (
     PRIMARY KEY (note_id, created_at, comment_id)
 ) WITH CLUSTERING ORDER BY (created_at ASC, comment_id ASC);
 
+CREATE TABLE IF NOT EXISTS comments_by_id (
+    comment_id    TEXT PRIMARY KEY,
+    note_id       TEXT,
+    author_id     TEXT,
+    content       TEXT,
+    created_at    TIMESTAMP,
+    updated_at    TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS reading_records_by_user (
     user_id       TEXT,
     date          DATE,
