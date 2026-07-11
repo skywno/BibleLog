@@ -3,6 +3,7 @@ package com.example.biblelog.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.biblelog.di.SessionCoordinator
+import com.example.biblelog.domain.model.NotificationItem
 import com.example.biblelog.domain.model.ProfileVisibility
 import com.example.biblelog.domain.model.UserProfile
 import com.example.biblelog.domain.repository.BibleLogRepository

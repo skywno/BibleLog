@@ -1,20 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from common.deps import get_current_user_id
 from common.models import FollowRequest, FollowUserSummary, FriendRequest, SendFriendRequestBody, UserSearchResult
 from user_service.deps import CurrentUserIdDep, UserContainerDep
 
 router = APIRouter(tags=["relations"], dependencies=[Depends(get_current_user_id)])
-
-
-@router.get("/users/search")
-def search_users(
-    user_id: CurrentUserIdDep,
-    container: UserContainerDep,
-    q: str = Query(min_length=1),
-    limit: int = Query(default=20, ge=1, le=50),
-) -> list[UserSearchResult]:
-    return container.relation_service.search_users(q, user_id, limit)
 
 
 @router.get("/friends")

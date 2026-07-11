@@ -55,7 +55,7 @@ val JournalNavStateSaver = listSaver(
     restore = { saved ->
         JournalNavState(
             route = JournalSubRoute.valueOf(saved[0] as String),
-            editingNoteId = saved[1] as String?,
+            editingNoteId = saved[1],
         )
     },
 )
@@ -65,7 +65,7 @@ val CommunityNavStateSaver = listSaver(
     restore = { saved ->
         CommunityNavState(
             route = CommunitySubRoute.valueOf(saved[0] as String),
-            profileUserId = saved[1] as String?,
+            profileUserId = saved[1],
         )
     },
 )

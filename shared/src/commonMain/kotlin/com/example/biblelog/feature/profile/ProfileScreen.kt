@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
+import com.example.biblelog.ui.components.WantedCard
 import com.example.biblelog.domain.model.ProfileVisibility
 import com.example.biblelog.ui.components.WantedFilterChip
 import com.example.biblelog.ui.components.WantedTextField

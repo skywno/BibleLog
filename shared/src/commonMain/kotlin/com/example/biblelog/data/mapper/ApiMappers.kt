@@ -23,6 +23,7 @@ import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedItem
+import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.FollowRequest
 import com.example.biblelog.domain.model.NotificationItem
 import com.example.biblelog.domain.model.ProfileVisibility

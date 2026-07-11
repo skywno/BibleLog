@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from common.models import UpdateUserProfileRequest, UserProfile
+from common.models import UpdateUserProfileRequest, UserProfile, UserSearchResult
 from user_service.deps import CurrentUserIdDep, UserContainerDep, get_current_user_id
 from user_service.container import UserContainer
 
@@ -24,6 +24,16 @@ def can_view_profile(viewer_id: str, profile: UserProfile, container: UserContai
 @router.get("/me")
 def get_current_user(user_id: CurrentUserIdDep, container: UserContainerDep) -> UserProfile:
     return container.users.get_user(user_id)
+
+
+@router.get("/search")
+def search_users(
+    user_id: CurrentUserIdDep,
+    container: UserContainerDep,
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> list[UserSearchResult]:
+    return container.relation_service.search_users(q, user_id, limit)
 
 
 @router.get("/{user_id}")
