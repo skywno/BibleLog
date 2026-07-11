@@ -229,3 +229,16 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+
+  dev-seed:
+    profiles: ["dev"]
+    build:
+      context: ./seed
+    environment:
+      API_BASE: http://traefik:8000
+    depends_on:
+      traefik:
+        condition: service_started
+      feed-service:
+        condition: service_started
+    restart: "no"

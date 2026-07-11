@@ -17,6 +17,7 @@ backend/
 ├── reading_service/      # /reading
 ├── ai_service/           # /ai
 ├── schema/               # ScyllaDB + PostgreSQL DDL
+├── seed/                 # Dev seed script (opt-in via --profile dev)
 ├── docker-compose.yml    # Traefik + infra + all services
 └── */Dockerfile          # per-service container images
 ```
@@ -28,12 +29,44 @@ cd backend
 docker compose up --build
 ```
 
+### Dev seed data (optional)
+
+테스트 유저, 교회, 소그룹, 친구 관계, 묵상 노트를 자동으로 넣으려면 `dev` profile을 사용합니다:
+
+```bash
+docker compose --profile dev up --build
+```
+
+또는:
+
+```bash
+COMPOSE_PROFILES=dev docker compose up --build
+```
+
+기본 `docker compose up`만 실행하면 씨드는 **실행되지 않습니다**.
+
+씨드 스크립트: [`seed/seed-dev-data.sh`](seed/seed-dev-data.sh) — 기존 HTTP API만 호출하며, `Grace Community Church`가 이미 있으면 스킵합니다.
+
+| Email | Role |
+|-------|------|
+| `grace@biblelog.dev` | Grace Community Church 생성자 |
+| `david@biblelog.dev` | 소그룹 리더 (Grace) |
+| `sarah@biblelog.dev` | Grace 교회 · Youth Fellowship 멤버 |
+| `mark@biblelog.dev` | Hope Chapel 생성자 |
+| `demo@biblelog.app` | 기존 데모 계정 |
+
+Dev login:
+
+```bash
+curl -X POST "http://localhost:8000/auth/dev/login?email=grace@biblelog.dev"
+```
+
 | Entry | URL |
 |-------|-----|
 | API (Traefik) | http://localhost:8000 |
 | Traefik dashboard | http://localhost:8090 |
 
-Dev login:
+기본 dev login (씨드 없이도 사용 가능):
 
 ```bash
 curl -X POST "http://localhost:8000/auth/dev/login?email=demo@biblelog.app"
