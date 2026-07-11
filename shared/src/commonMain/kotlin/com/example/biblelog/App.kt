@@ -31,6 +31,8 @@ import com.example.biblelog.feature.home.HomeScreen
 import com.example.biblelog.feature.journal.JournalScreen
 import com.example.biblelog.feature.profile.ProfileScreen
 import com.example.biblelog.navigation.BibleSubRoute
+import com.example.biblelog.navigation.CommunityNavState
+import com.example.biblelog.navigation.CommunityNavStateSaver
 import com.example.biblelog.navigation.JournalNavState
 import com.example.biblelog.navigation.JournalNavStateSaver
 import com.example.biblelog.navigation.JournalSubRoute
@@ -78,6 +80,9 @@ private fun BibleLogMainScaffold() {
     var journalNavState by rememberSaveable(stateSaver = JournalNavStateSaver) {
         mutableStateOf(JournalNavState())
     }
+    var communityNavState by rememberSaveable(stateSaver = CommunityNavStateSaver) {
+        mutableStateOf(CommunityNavState())
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -94,6 +99,7 @@ private fun BibleLogMainScaffold() {
                             selectedTab = tab
                             if (tab == MainTab.Bible) bibleSubRoute = BibleSubRoute.Dashboard
                             if (tab == MainTab.Journal) journalNavState = JournalNavState()
+                            if (tab == MainTab.Community) communityNavState = CommunityNavState()
                         },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label) },
@@ -132,7 +138,11 @@ private fun BibleLogMainScaffold() {
                 onNavStateChange = { journalNavState = it },
                 modifier = Modifier.padding(innerPadding),
             )
-            MainTab.Community -> CommunityScreen(modifier = Modifier.padding(innerPadding))
+            MainTab.Community -> CommunityScreen(
+                navState = communityNavState,
+                onNavStateChange = { communityNavState = it },
+                modifier = Modifier.padding(innerPadding),
+            )
             MainTab.Ai -> AiChatScreen(modifier = Modifier.padding(innerPadding))
             MainTab.Profile -> ProfileScreen(modifier = Modifier.padding(innerPadding))
         }

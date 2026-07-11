@@ -99,3 +99,23 @@ class MemoryOrganizationRepository(OrganizationRepository):
             group_ids=group_ids,
         )
         return self.memberships[user_id]
+
+    def search_churches(self, query: str, limit: int) -> list[Church]:
+        lowered = query.casefold()
+        matches = [
+            church
+            for church in self.churches.values()
+            if church.name.casefold().startswith(lowered)
+        ]
+        matches.sort(key=lambda church: church.name)
+        return matches[:limit]
+
+    def search_small_groups(self, query: str, limit: int) -> list[SmallGroup]:
+        lowered = query.casefold()
+        matches = [
+            group
+            for group in self.groups.values()
+            if group.name.casefold().startswith(lowered)
+        ]
+        matches.sort(key=lambda group: group.name)
+        return matches[:limit]

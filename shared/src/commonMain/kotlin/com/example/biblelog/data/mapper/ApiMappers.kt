@@ -3,15 +3,20 @@ package com.example.biblelog.data.mapper
 import com.example.biblelog.data.remote.ApiCommentDto
 import com.example.biblelog.data.remote.ApiAiMessageDto
 import com.example.biblelog.data.remote.ApiBibleReferenceDto
+import com.example.biblelog.data.remote.ApiChurchDto
 import com.example.biblelog.data.remote.ApiFeedItemDto
 import com.example.biblelog.data.remote.ApiMeditationNoteDto
 import com.example.biblelog.data.remote.ApiReadingProgressDto
 import com.example.biblelog.data.remote.ApiReadingRecordDto
 import com.example.biblelog.data.remote.ApiReadingStatsDto
+import com.example.biblelog.data.remote.ApiSmallGroupDto
+import com.example.biblelog.data.remote.ApiUserMembershipsDto
 import com.example.biblelog.data.remote.ApiUserProfileDto
+import com.example.biblelog.data.remote.ApiUserSearchResultDto
 import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.domain.model.AiMessage
 import com.example.biblelog.domain.model.BibleReference
+import com.example.biblelog.domain.model.ChurchSummary
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
@@ -24,7 +29,10 @@ import com.example.biblelog.domain.model.ReadingRecord
 import com.example.biblelog.domain.model.ReadingStats
 import com.example.biblelog.domain.model.ReactionCount
 import com.example.biblelog.domain.model.Comment
+import com.example.biblelog.domain.model.SmallGroupSummary
+import com.example.biblelog.domain.model.UserMemberships
 import com.example.biblelog.domain.model.UserProfile
+import com.example.biblelog.domain.model.UserSearchResult
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 
@@ -105,6 +113,29 @@ fun ApiUserProfileDto.toDomain() = UserProfile(
     nickname = nickname,
     bio = bio,
     isLoggedIn = isLoggedIn,
+)
+
+fun ApiUserSearchResultDto.toDomain() = UserSearchResult(
+    id = id,
+    nickname = nickname,
+    bio = bio,
+)
+
+fun ApiChurchDto.toDomain() = ChurchSummary(
+    id = id,
+    name = name,
+    description = description,
+)
+
+fun ApiSmallGroupDto.toDomain() = SmallGroupSummary(
+    id = id,
+    name = name,
+    churchId = churchId,
+)
+
+fun ApiUserMembershipsDto.toDomain() = UserMemberships(
+    churchId = churchId,
+    groupIds = groupIds.toSet(),
 )
 
 fun FaithReaction.toApi(): String = when (this) {

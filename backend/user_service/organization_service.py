@@ -35,3 +35,9 @@ class OrganizationService:
 
     def get_memberships(self, user_id: str) -> UserMembership:
         return self._organizations.get_memberships(user_id)
+
+    def search_churches(self, query: str, limit: int = 20) -> list[Church]:
+        return self._organizations.search_churches(query, limit)
+
+    def search_small_groups(self, query: str, limit: int = 20) -> list[SmallGroup]:
+        return self._organizations.search_small_groups(query, limit)

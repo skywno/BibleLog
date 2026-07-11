@@ -171,3 +171,33 @@ class PostgresOrganizationRepository(OrganizationRepository):
         self._conn.commit()
         self._sync_group_ids(user_id)
         return self.get_memberships(user_id)
+
+    def search_churches(self, query: str, limit: int) -> list[Church]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, description, created_by, created_at
+                FROM churches
+                WHERE name ILIKE %s
+                ORDER BY name
+                LIMIT %s
+                """,
+                (f"{query}%", limit),
+            )
+            rows = cur.fetchall()
+        return [Church(**row) for row in rows]
+
+    def search_small_groups(self, query: str, limit: int) -> list[SmallGroup]:
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, church_id, name, leader_id, created_at
+                FROM small_groups
+                WHERE name ILIKE %s
+                ORDER BY name
+                LIMIT %s
+                """,
+                (f"{query}%", limit),
+            )
+            rows = cur.fetchall()
+        return [SmallGroup(**row) for row in rows]

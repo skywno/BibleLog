@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from common.deps import get_current_user_id
 from common.models import (
@@ -90,6 +90,24 @@ def leave_small_group(
     container: UserContainerDep,
 ) -> None:
     container.organization_service.leave_small_group(user_id, group_id)
+
+
+@router.get("/churches/search")
+def search_churches(
+    container: UserContainerDep,
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> list[Church]:
+    return container.organization_service.search_churches(q, limit)
+
+
+@router.get("/small-groups/search")
+def search_small_groups(
+    container: UserContainerDep,
+    q: str = Query(min_length=1),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> list[SmallGroup]:
+    return container.organization_service.search_small_groups(q, limit)
 
 
 @router.get("/me/memberships")

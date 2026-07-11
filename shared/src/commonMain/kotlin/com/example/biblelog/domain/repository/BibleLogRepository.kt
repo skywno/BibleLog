@@ -9,7 +9,8 @@ interface BibleLogRepository :
     ReadingRepository,
     JournalRepository,
     FeedRepository,
-    AiRepository {
+    AiRepository,
+    RelationRepository {
     val notifications: StateFlow<List<NotificationItem>>
 
     suspend fun addComment(noteId: String, content: String): Result<Comment>

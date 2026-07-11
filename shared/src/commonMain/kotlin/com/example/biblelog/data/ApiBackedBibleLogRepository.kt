@@ -12,6 +12,7 @@ import com.example.biblelog.data.remote.BibleLogApiClient
 import com.example.biblelog.domain.model.AiConversationMode
 import com.example.biblelog.domain.model.AiMessage
 import com.example.biblelog.domain.model.BibleReference
+import com.example.biblelog.domain.model.ChurchSummary
 import com.example.biblelog.domain.model.Comment
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.FaithReaction
@@ -24,7 +25,10 @@ import com.example.biblelog.domain.model.NotificationItem
 import com.example.biblelog.domain.model.ReadingProgress
 import com.example.biblelog.domain.model.ReadingRecord
 import com.example.biblelog.domain.model.ReadingStats
+import com.example.biblelog.domain.model.SmallGroupSummary
+import com.example.biblelog.domain.model.UserMemberships
 import com.example.biblelog.domain.model.UserProfile
+import com.example.biblelog.domain.model.UserSearchResult
 import com.example.biblelog.domain.repository.BibleLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -184,6 +188,46 @@ class ApiBackedBibleLogRepository(
 
     override suspend fun updateProfile(nickname: String, bio: String): Result<Unit> = runCatching {
         _currentUser.value = apiClient.updateCurrentUser(nickname, bio).toDomain()
+    }
+
+    override suspend fun searchUsers(query: String): Result<List<UserSearchResult>> = runCatching {
+        apiClient.searchUsers(query).map { it.toDomain() }
+    }
+
+    override suspend fun searchChurches(query: String): Result<List<ChurchSummary>> = runCatching {
+        apiClient.searchChurches(query).map { it.toDomain() }
+    }
+
+    override suspend fun searchSmallGroups(query: String): Result<List<SmallGroupSummary>> = runCatching {
+        apiClient.searchSmallGroups(query).map { it.toDomain() }
+    }
+
+    override suspend fun sendFriendRequest(userId: String): Result<Unit> = runCatching {
+        apiClient.sendFriendRequest(userId)
+    }
+
+    override suspend fun followUser(userId: String): Result<Unit> = runCatching {
+        apiClient.followUser(userId)
+    }
+
+    override suspend fun joinChurch(churchId: String): Result<Unit> = runCatching {
+        apiClient.joinChurch(churchId)
+    }
+
+    override suspend fun joinSmallGroup(groupId: String): Result<Unit> = runCatching {
+        apiClient.joinSmallGroup(groupId)
+    }
+
+    override suspend fun getFriendIds(): Result<Set<String>> = runCatching {
+        apiClient.listFriends().map { it.id }.toSet()
+    }
+
+    override suspend fun getFollowingIds(): Result<Set<String>> = runCatching {
+        apiClient.listFollowing().map { it.id }.toSet()
+    }
+
+    override suspend fun getMemberships(): Result<UserMemberships> = runCatching {
+        apiClient.getMemberships().toDomain()
     }
 
     private suspend fun refreshReading() {

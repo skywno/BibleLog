@@ -147,6 +147,12 @@ class BibleLogApiClient(
     suspend fun searchUsers(query: String, limit: Int = 20): List<ApiUserSearchResultDto> =
         authorizedGet("/users/search?q=$query&limit=$limit")
 
+    suspend fun searchChurches(query: String, limit: Int = 20): List<ApiChurchDto> =
+        authorizedGet("/churches/search?q=$query&limit=$limit")
+
+    suspend fun searchSmallGroups(query: String, limit: Int = 20): List<ApiSmallGroupDto> =
+        authorizedGet("/small-groups/search?q=$query&limit=$limit")
+
     suspend fun listFriends(): List<ApiUserSearchResultDto> =
         authorizedGet("/friends")
 

@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +38,8 @@ import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedSort
 import com.example.biblelog.domain.model.NoteVisibility
+import com.example.biblelog.navigation.CommunityNavState
+import com.example.biblelog.navigation.CommunitySubRoute
 import com.example.biblelog.ui.components.WantedCard
 import com.example.biblelog.ui.components.WantedFilterChip
 import com.example.biblelog.ui.components.WantedSegmentedControl
@@ -40,7 +47,28 @@ import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
 
 @Composable
-fun CommunityScreen(modifier: Modifier = Modifier) {
+fun CommunityScreen(
+    navState: CommunityNavState,
+    onNavStateChange: (CommunityNavState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    when (navState.route) {
+        CommunitySubRoute.Feed -> CommunityFeedScreen(
+            onSearch = { onNavStateChange(CommunityNavState(CommunitySubRoute.Search)) },
+            modifier = modifier,
+        )
+        CommunitySubRoute.Search -> CommunitySearchScreen(
+            onBack = { onNavStateChange(CommunityNavState(CommunitySubRoute.Feed)) },
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun CommunityFeedScreen(
+    onSearch: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val viewModel: CommunityViewModel = viewModel {
         CommunityViewModel(AppContainer.repository)
     }
@@ -83,7 +111,20 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .padding(WantedSpacing.Base.dp),
     ) {
-        Text("공동체 피드", style = MaterialTheme.typography.headlineMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("공동체 피드", style = MaterialTheme.typography.headlineMedium)
+            IconButton(onClick = onSearch) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "검색",
+                    tint = WantedColors.Primary,
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 

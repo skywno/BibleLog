@@ -156,3 +156,32 @@ data class ReadingStats(
     val currentStreak: Int,
     val bestStreak: Int,
 )
+
+enum class CommunitySearchCategory {
+    USERS,
+    CHURCHES,
+    SMALL_GROUPS,
+}
+
+data class UserSearchResult(
+    val id: String,
+    val nickname: String,
+    val bio: String,
+)
+
+data class ChurchSummary(
+    val id: String,
+    val name: String,
+    val description: String,
+)
+
+data class SmallGroupSummary(
+    val id: String,
+    val name: String,
+    val churchId: String?,
+)
+
+data class UserMemberships(
+    val churchId: String?,
+    val groupIds: Set<String>,
+)

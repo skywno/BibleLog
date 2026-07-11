@@ -33,3 +33,9 @@ class OrganizationRepository(ABC):
 
     @abstractmethod
     def get_memberships(self, user_id: str) -> UserMembership: ...
+
+    @abstractmethod
+    def search_churches(self, query: str, limit: int) -> list[Church]: ...
+
+    @abstractmethod
+    def search_small_groups(self, query: str, limit: int) -> list[SmallGroup]: ...
