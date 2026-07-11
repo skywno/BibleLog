@@ -23,20 +23,20 @@ def get_scylla_session(settings: Settings) -> Session | None:
         return _session
 
     hosts = [host.strip() for host in settings.scylla_hosts.split(",") if host.strip()]
-    cluster = Cluster(
-        hosts,
-        port=settings.scylla_port,
-        load_balancing_policy=DCAwareRoundRobinPolicy(local_dc="datacenter1"),
-        connect_timeout=10,
-    )
-
     last_error: Exception | None = None
     for attempt in range(12):
+        cluster = Cluster(
+            hosts,
+            port=settings.scylla_port,
+            load_balancing_policy=DCAwareRoundRobinPolicy(local_dc="datacenter1"),
+            connect_timeout=10,
+        )
         try:
             _session = cluster.connect()
             break
         except NoHostAvailable as exc:
             last_error = exc
+            cluster.shutdown()
             if attempt < 11:
                 delay = min(2**attempt, 15)
                 logger.warning("ScyllaDB not ready (attempt %s/12), retrying in %ss", attempt + 1, delay)
