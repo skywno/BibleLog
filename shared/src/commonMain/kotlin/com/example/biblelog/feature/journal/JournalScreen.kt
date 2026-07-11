@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,7 +62,13 @@ fun JournalScreen(
         JournalSubRoute.Write -> JournalWriteScreen(
             viewModel = viewModel,
             noteId = navState.editingNoteId,
+            prefillReference = navState.prefillReference,
             onBack = { onNavStateChange(JournalNavState(JournalSubRoute.List)) },
+            onPrefillConsumed = {
+                if (navState.prefillReference != null) {
+                    onNavStateChange(navState.copy(prefillReference = null))
+                }
+            },
             modifier = modifier,
         )
     }
@@ -177,20 +184,44 @@ private fun EmotionFilterRow(
 private fun JournalWriteScreen(
     viewModel: JournalViewModel,
     noteId: String?,
+    prefillReference: BibleReference?,
     onBack: () -> Unit,
+    onPrefillConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val notes by viewModel.notes.collectAsState()
     val existing = noteId?.let { id -> notes.find { it.id == id } }
+    val initialReference = existing?.reference ?: prefillReference
 
-    var content by remember(existing) { mutableStateOf(existing?.content.orEmpty()) }
-    var prayerTopic by remember(existing) { mutableStateOf(existing?.prayerTopic.orEmpty()) }
-    var selectedEmotion by remember(existing) { mutableStateOf(existing?.emotion) }
-    var selectedBookIndex by remember(existing) { mutableIntStateOf((existing?.reference?.bookId ?: 43) - 1) }
-    var chapter by remember(existing) { mutableStateOf(existing?.reference?.startChapter?.toString() ?: "3") }
-    var verse by remember(existing) { mutableStateOf(existing?.reference?.startVerse?.toString() ?: "16") }
-    var visibilityIndex by remember(existing) {
-        mutableIntStateOf(NoteVisibility.entries.indexOf(existing?.visibility ?: NoteVisibility.PRIVATE))
+    LaunchedEffect(prefillReference) {
+        if (prefillReference != null) {
+            onPrefillConsumed()
+        }
+    }
+
+    var content by remember(existing, prefillReference) { mutableStateOf(existing?.content.orEmpty()) }
+    var prayerTopic by remember(existing, prefillReference) { mutableStateOf(existing?.prayerTopic.orEmpty()) }
+    var selectedEmotion by remember(existing, prefillReference) { mutableStateOf(existing?.emotion) }
+    var selectedBookIndex by remember(existing, prefillReference) {
+        mutableIntStateOf((initialReference?.bookId ?: 43) - 1)
+    }
+    var chapter by remember(existing, prefillReference) {
+        mutableStateOf(initialReference?.startChapter?.toString() ?: "3")
+    }
+    var verse by remember(existing, prefillReference) {
+        mutableStateOf(initialReference?.startVerse?.toString() ?: "16")
+    }
+    var savedReference by remember(existing, prefillReference) {
+        mutableStateOf(initialReference)
+    }
+    var visibilityIndex by remember(existing, prefillReference) {
+        mutableIntStateOf(
+            when {
+                existing != null -> NoteVisibility.entries.indexOf(existing.visibility)
+                prefillReference != null -> NoteVisibility.entries.indexOf(NoteVisibility.PRIVATE)
+                else -> NoteVisibility.entries.indexOf(NoteVisibility.PRIVATE)
+            },
+        )
     }
 
     Column(
@@ -255,13 +286,19 @@ private fun JournalWriteScreen(
             )
             WantedTextField(
                 value = chapter,
-                onValueChange = { chapter = it },
+                onValueChange = {
+                    chapter = it
+                    savedReference = null
+                },
                 label = "장",
                 modifier = Modifier.weight(1f),
             )
             WantedTextField(
                 value = verse,
-                onValueChange = { verse = it },
+                onValueChange = {
+                    verse = it
+                    savedReference = null
+                },
                 label = "절",
                 modifier = Modifier.weight(1f),
             )
@@ -298,17 +335,18 @@ private fun JournalWriteScreen(
                 text = "저장",
                 onClick = {
                     val book = BibleCatalog.books[selectedBookIndex.coerceIn(BibleCatalog.books.indices)]
+                    val reference = savedReference ?: BibleReference(
+                        bookId = book.id,
+                        startChapter = chapter.toIntOrNull() ?: 1,
+                        startVerse = verse.toIntOrNull() ?: 1,
+                        endChapter = chapter.toIntOrNull() ?: 1,
+                        endVerse = verse.toIntOrNull() ?: 1,
+                    )
                     viewModel.saveNote(
                         content = content,
                         prayerTopic = prayerTopic.ifBlank { null },
                         emotion = selectedEmotion,
-                        reference = BibleReference(
-                            bookId = book.id,
-                            startChapter = chapter.toIntOrNull() ?: 1,
-                            startVerse = verse.toIntOrNull() ?: 1,
-                            endChapter = chapter.toIntOrNull() ?: 1,
-                            endVerse = verse.toIntOrNull() ?: 1,
-                        ),
+                        reference = reference,
                         visibility = NoteVisibility.entries[visibilityIndex],
                         noteId = noteId,
                         onComplete = onBack,

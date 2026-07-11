@@ -3,6 +3,7 @@ package com.example.biblelog.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.biblelog.domain.model.MeditationNote
+import com.example.biblelog.domain.model.ProfileVisibility
 import com.example.biblelog.domain.model.UserProfile
 import com.example.biblelog.domain.repository.BibleLogRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,11 +51,12 @@ class UserProfileViewModel(
         viewModelScope.launch {
             repository.followUser(userId)
                 .onSuccess {
+                    val isPrivate = _uiState.value.profile?.profileVisibility == ProfileVisibility.PRIVATE
                     _uiState.update {
                         it.copy(
-                            isFollowing = true,
-                            isPendingFollow = false,
-                            actionMessage = "팔로우했습니다.",
+                            isFollowing = !isPrivate,
+                            isPendingFollow = isPrivate,
+                            actionMessage = if (isPrivate) "팔로우 요청을 보냈습니다." else "팔로우했습니다.",
                         )
                     }
                 }
@@ -73,18 +75,23 @@ class UserProfileViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val profileResult = repository.getUserProfile(userId)
-            val notesResult = repository.getUserNotes(userId)
             val friendIds = repository.getFriendIds().getOrDefault(emptySet())
             val followingIds = repository.getFollowingIds().getOrDefault(emptySet())
 
             profileResult
                 .onSuccess { profile ->
+                    val notesResult = if (profile.viewerCanViewContent) {
+                        repository.getUserNotes(userId)
+                    } else {
+                        Result.success(emptyList())
+                    }
                     _uiState.update {
                         it.copy(
                             profile = profile,
                             notes = notesResult.getOrDefault(emptyList()),
                             isFriend = userId in friendIds,
                             isFollowing = userId in followingIds,
+                            isPendingFollow = profile.viewerFollowPending,
                             isLoading = false,
                         )
                     }

@@ -24,8 +24,12 @@ class BibleViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private val _successMessage = MutableStateFlow<String?>(null)
-    val successMessage: StateFlow<String?> = _successMessage.asStateFlow()
+    private val _readingSaveResult = MutableStateFlow<ReadingSaveResult?>(null)
+    val readingSaveResult: StateFlow<ReadingSaveResult?> = _readingSaveResult.asStateFlow()
+
+    fun consumeReadingSaveResult() {
+        _readingSaveResult.value = null
+    }
 
     fun getReadingDates(): Set<LocalDate> = repository.getReadingDates()
 
@@ -33,12 +37,12 @@ class BibleViewModel(
         viewModelScope.launch {
             repository.addReadingRecord(reference, minutesRead, date).fold(
                 onSuccess = {
-                    _successMessage.value = "읽기 기록이 저장되었습니다."
+                    _readingSaveResult.value = ReadingSaveResult(reference)
                     _errorMessage.value = null
                 },
                 onFailure = { e ->
                     _errorMessage.value = e.message
-                    _successMessage.value = null
+                    _readingSaveResult.value = null
                 },
             )
         }

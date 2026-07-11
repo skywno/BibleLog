@@ -46,9 +46,24 @@ def get_user_profile(
         profile = container.users.get_user(user_id)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found") from exc
-    if not can_view_profile(viewer_id, profile, container):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return profile.model_copy(update={"is_logged_in": viewer_id == user_id})
+    if can_view_profile(viewer_id, profile, container):
+        return profile.model_copy(
+            update={
+                "is_logged_in": viewer_id == user_id,
+                "viewer_can_view_content": True,
+                "viewer_follow_pending": False,
+            }
+        )
+    return UserProfile(
+        id=profile.id,
+        nickname=profile.nickname,
+        bio="",
+        photo_url=profile.photo_url,
+        profile_visibility=profile.profile_visibility,
+        is_logged_in=False,
+        viewer_can_view_content=False,
+        viewer_follow_pending=container.relations.has_pending_follow_request(viewer_id, profile.id),
+    )
 
 
 @router.patch("/me")

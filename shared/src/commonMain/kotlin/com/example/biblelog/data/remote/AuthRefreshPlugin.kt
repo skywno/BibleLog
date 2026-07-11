@@ -7,6 +7,7 @@ import io.ktor.http.HttpStatusCode
 
 class AuthRefreshConfig {
     var onUnauthorized: (suspend () -> Boolean)? = null
+    var authorizationHeader: (() -> String?)? = null
 }
 
 val AuthRefreshPlugin = createClientPlugin("AuthRefresh", ::AuthRefreshConfig) {
@@ -17,7 +18,15 @@ val AuthRefreshPlugin = createClientPlugin("AuthRefresh", ::AuthRefreshConfig) {
             request.headers.contains(HttpHeaders.Authorization)
         ) {
             val refreshed = pluginConfig.onUnauthorized?.invoke() == true
-            if (refreshed) proceed(request) else call
+            if (refreshed) {
+                request.headers.remove(HttpHeaders.Authorization)
+                pluginConfig.authorizationHeader?.invoke()?.let { token ->
+                    request.headers.append(HttpHeaders.Authorization, "Bearer $token")
+                }
+                proceed(request)
+            } else {
+                call
+            }
         } else {
             call
         }

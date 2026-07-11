@@ -1,6 +1,7 @@
 package com.example.biblelog.feature.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ fun HomeScreen(
     onNavigateToBible: () -> Unit,
     onNavigateToJournal: () -> Unit,
     onNavigateToAi: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: HomeViewModel = viewModel {
@@ -85,7 +87,8 @@ fun HomeScreen(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(WantedColors.Primary.copy(alpha = 0.15f)),
+                    .background(WantedColors.Primary.copy(alpha = 0.15f))
+                    .clickable(onClick = onNavigateToProfile),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

@@ -34,7 +34,14 @@ class AuthRepository(
     val isLoggedIn: Boolean get() = _session.value != null
 
     init {
-        tokenHolder.onUnauthorized = { refreshAccessToken() }
+        tokenHolder.onUnauthorized = {
+            if (refreshAccessToken()) {
+                true
+            } else {
+                clearSession()
+                false
+            }
+        }
     }
 
     suspend fun restoreSession(): Boolean {

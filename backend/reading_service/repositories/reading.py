@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, date, datetime, timedelta
 
-from common.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
+from common.models import CreateReadingRecordRequest, ReadingRecord
+from common.reading_progress import reading_progress_from_records
 
 
 class ReadingRepository(ABC):
@@ -27,6 +27,21 @@ def _current_streak(dates: set[date]) -> int:
     return streak
 
 
+def _best_streak(dates: set[date]) -> int:
+    if not dates:
+        return 0
+    sorted_dates = sorted(dates)
+    best = 1
+    current = 1
+    for index in range(1, len(sorted_dates)):
+        if (sorted_dates[index] - sorted_dates[index - 1]).days == 1:
+            current += 1
+            best = max(best, current)
+        else:
+            current = 1
+    return best
+
+
 def reading_stats_from_records(records: list[ReadingRecord]) -> dict:
     dates = {record.date for record in records}
     total = sum(record.minutes_read for record in records)
@@ -38,16 +53,6 @@ def reading_stats_from_records(records: list[ReadingRecord]) -> dict:
         "total_minutes": total,
         "average_daily_minutes": (total / len(dates)) if dates else 0.0,
         "current_streak": streak,
-        "best_streak": max(streak, 14),
+        "best_streak": _best_streak(dates),
         "monthly_reading_days": monthly,
-    }
-
-
-def reading_progress_from_records(records: list[ReadingRecord]) -> dict:
-    ratio = min(len(records) / 300.0, 1.0)
-    return {
-        "overall": ratio,
-        "old_testament": ratio * 0.6,
-        "new_testament": ratio * 0.4,
-        "by_book": {str(i): min(ratio + i * 0.01, 1.0) for i in range(1, 67)},
     }

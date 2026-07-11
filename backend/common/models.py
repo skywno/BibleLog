@@ -31,6 +31,8 @@ class UserProfile(BaseModel):
     photo_url: str = ""
     profile_visibility: ProfileVisibility = "public"
     is_logged_in: bool = True
+    viewer_can_view_content: bool = True
+    viewer_follow_pending: bool = False
 
 
 class UpdateUserProfileRequest(BaseModel):

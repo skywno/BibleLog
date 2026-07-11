@@ -1,15 +1,20 @@
 package com.example.biblelog.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -59,6 +64,8 @@ fun WantedButton(
             colors = ButtonDefaults.buttonColors(
                 containerColor = WantedColors.SurfaceSubtle,
                 contentColor = WantedColors.Heading,
+                disabledContainerColor = WantedColors.SurfaceSubtle,
+                disabledContentColor = WantedColors.Secondary,
             ),
             contentPadding = contentPadding,
         ) {
@@ -71,7 +78,10 @@ fun WantedButton(
             enabled = enabled,
             shape = shape,
             border = BorderStroke(1.dp, WantedColors.Border),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = WantedColors.Heading),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = WantedColors.Heading,
+                disabledContentColor = WantedColors.Secondary,
+            ),
             contentPadding = contentPadding,
         ) {
             Text(text)
@@ -84,6 +94,53 @@ fun WantedButton(
             colors = ButtonDefaults.textButtonColors(contentColor = WantedColors.Primary),
         ) {
             Text(text)
+        }
+    }
+}
+
+@Composable
+fun WantedStatusButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    variant: WantedButtonVariant = WantedButtonVariant.Outlined,
+) {
+    val shape = RoundedCornerShape(WantedRadius.Md.dp)
+    val contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp)
+
+    when (variant) {
+        WantedButtonVariant.Secondary -> Surface(
+            modifier = modifier.heightIn(min = 40.dp),
+            shape = shape,
+            color = WantedColors.SurfaceSubtle,
+        ) {
+            Box(
+                modifier = Modifier.padding(contentPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = WantedColors.Secondary,
+                )
+            }
+        }
+
+        else -> Surface(
+            modifier = modifier.heightIn(min = 40.dp),
+            shape = shape,
+            color = Color.Transparent,
+            border = BorderStroke(1.dp, WantedColors.Border),
+        ) {
+            Box(
+                modifier = Modifier.padding(contentPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = WantedColors.Secondary,
+                )
+            }
         }
     }
 }

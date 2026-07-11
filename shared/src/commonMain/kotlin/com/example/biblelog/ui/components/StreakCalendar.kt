@@ -1,11 +1,12 @@
 package com.example.biblelog.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,9 +31,12 @@ fun StreakCalendar(
     readingDates: Set<LocalDate>,
     modifier: Modifier = Modifier,
     weeks: Int = 12,
+    selectedDate: LocalDate? = null,
+    onDateSelected: ((LocalDate) -> Unit)? = null,
 ) {
     val todayDate = today()
     val startDate = todayDate.minus(DatePeriod(days = weeks * 7 - 1))
+    val isInteractive = onDateSelected != null
 
     Column(modifier = modifier) {
         Row(
@@ -46,12 +50,31 @@ fun StreakCalendar(
                         val hasReading = readingDates.contains(date)
                         val minutesRead = if (hasReading) 1 else 0
                         val color = streakColor(minutesRead, hasReading)
+                        val isSelected = selectedDate == date
 
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(color),
+                                .background(color)
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.border(
+                                            width = 1.dp,
+                                            color = WantedColors.Primary,
+                                            shape = RoundedCornerShape(2.dp),
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .then(
+                                    if (isInteractive) {
+                                        Modifier.clickable { onDateSelected.invoke(date) }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         )
                     }
                 }

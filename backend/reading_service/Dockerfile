@@ -10,6 +10,7 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY common ./common
+COPY data ./data
 COPY schema ./schema
 COPY reading_service ./reading_service
 

@@ -13,8 +13,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -31,6 +33,7 @@ import com.example.biblelog.di.AppContainer
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.navigation.BibleSubRoute
 import com.example.biblelog.ui.components.BiblePickerPoint
+import com.example.biblelog.ui.components.BibleQuickReferenceInput
 import com.example.biblelog.ui.components.BibleReferencePicker
 import com.example.biblelog.ui.components.StreakCalendar
 import com.example.biblelog.ui.components.WantedButton
@@ -41,12 +44,15 @@ import com.example.biblelog.ui.components.WantedSegmentedControl
 import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
+import com.example.biblelog.util.formatKoreanWithWeekday
 import com.example.biblelog.util.today
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun BibleScreen(
     subRoute: BibleSubRoute,
     onSubRouteChange: (BibleSubRoute) -> Unit,
+    onNavigateToJournalWrite: (BibleReference) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: BibleViewModel = viewModel {
@@ -63,6 +69,10 @@ fun BibleScreen(
         BibleSubRoute.AddRecord -> AddReadingRecordScreen(
             viewModel = viewModel,
             onBack = { onSubRouteChange(BibleSubRoute.Dashboard) },
+            onNavigateToJournalWrite = { reference ->
+                onNavigateToJournalWrite(reference)
+                onSubRouteChange(BibleSubRoute.Dashboard)
+            },
             modifier = modifier,
         )
         BibleSubRoute.Stats -> BibleStatsScreen(
@@ -84,6 +94,20 @@ private fun BibleDashboardScreen(
     val stats by viewModel.readingStats.collectAsState()
     val readingDates = viewModel.getReadingDates()
     val records by viewModel.readingRecords.collectAsState()
+
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var hasUserSelectedDate by remember { mutableStateOf(false) }
+
+    LaunchedEffect(records) {
+        if (!hasUserSelectedDate) {
+            selectedDate = records.maxByOrNull { it.date }?.date ?: today()
+        }
+    }
+
+    val activeDate = selectedDate ?: records.maxByOrNull { it.date }?.date ?: today()
+    val dayRecords = records
+        .filter { it.date == activeDate }
+        .sortedByDescending { it.createdAt }
 
     Column(
         modifier = modifier
@@ -119,7 +143,14 @@ private fun BibleDashboardScreen(
         WantedCard {
             Text("읽기 캘린더", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
-            StreakCalendar(readingDates = readingDates)
+            StreakCalendar(
+                readingDates = readingDates,
+                selectedDate = activeDate,
+                onDateSelected = { date ->
+                    selectedDate = date
+                    hasUserSelectedDate = true
+                },
+            )
         }
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
@@ -138,19 +169,30 @@ private fun BibleDashboardScreen(
         }
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
-        Text("최근 기록", style = MaterialTheme.typography.titleLarge)
+        Text(
+            "이날의 기록 - ${activeDate.formatKoreanWithWeekday()}",
+            style = MaterialTheme.typography.titleLarge,
+        )
         Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
 
-        records.take(5).forEach { record ->
-            WantedCard(modifier = Modifier.padding(bottom = WantedSpacing.Sm.dp)) {
-                Text(
-                    record.reference.displayName(BibleCatalog.bookMap),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    "${record.date} · ${record.minutesRead}분",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+        if (dayRecords.isEmpty()) {
+            Text(
+                "이 날짜에 기록이 없습니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = WantedColors.Secondary,
+            )
+        } else {
+            dayRecords.forEach { record ->
+                WantedCard(modifier = Modifier.padding(bottom = WantedSpacing.Sm.dp)) {
+                    Text(
+                        record.reference.displayName(BibleCatalog.bookMap),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        "${record.minutesRead}분",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
     }
@@ -160,10 +202,62 @@ private fun BibleDashboardScreen(
 private fun AddReadingRecordScreen(
     viewModel: BibleViewModel,
     onBack: () -> Unit,
+    onNavigateToJournalWrite: (BibleReference) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val errorMessage by viewModel.errorMessage.collectAsState()
-    val successMessage by viewModel.successMessage.collectAsState()
+    val readingSaveResult by viewModel.readingSaveResult.collectAsState()
+    var showMeditationPrompt by remember { mutableStateOf(false) }
+    var savedReference by remember { mutableStateOf<BibleReference?>(null) }
+    var pendingJournalReference by remember { mutableStateOf<BibleReference?>(null) }
+
+    LaunchedEffect(readingSaveResult) {
+        readingSaveResult?.let { result ->
+            savedReference = result.reference
+            showMeditationPrompt = true
+            viewModel.consumeReadingSaveResult()
+        }
+    }
+
+    LaunchedEffect(pendingJournalReference) {
+        val reference = pendingJournalReference ?: return@LaunchedEffect
+        pendingJournalReference = null
+        onNavigateToJournalWrite(reference)
+    }
+
+    if (showMeditationPrompt && savedReference != null) {
+        val referenceLabel = savedReference!!.displayName(BibleCatalog.bookMap)
+        AlertDialog(
+            onDismissRequest = {
+                showMeditationPrompt = false
+                savedReference = null
+                onBack()
+            },
+            title = { Text("읽기 기록을 저장했어요") },
+            text = { Text("오늘 읽은 ${referenceLabel}에 대한 묵상도 남길까요?") },
+            confirmButton = {
+                WantedButton(
+                    text = "묵상 작성",
+                    onClick = {
+                        pendingJournalReference = savedReference
+                        showMeditationPrompt = false
+                        savedReference = null
+                    },
+                )
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showMeditationPrompt = false
+                        savedReference = null
+                        onBack()
+                    },
+                ) {
+                    Text("나중에", color = WantedColors.Secondary)
+                }
+            },
+        )
+    }
 
     var startPoint by remember {
         mutableStateOf(BiblePickerPoint(bookId = 1, chapter = 1, verse = 1))
@@ -203,13 +297,19 @@ private fun AddReadingRecordScreen(
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 
+        BibleQuickReferenceInput(
+            onApply = { startPoint = it },
+        )
+
+        Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
+
         BibleReferencePicker(
             label = "시작 구절",
             point = startPoint,
             onPointChange = { startPoint = it },
         )
 
-        Spacer(modifier = Modifier.height(WantedSpacing.Lg.dp))
+        Spacer(modifier = Modifier.height(WantedSpacing.Md.dp))
 
         BibleReferencePicker(
             label = "끝 구절",
@@ -231,10 +331,6 @@ private fun AddReadingRecordScreen(
         errorMessage?.let {
             Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
             Text(it, color = WantedColors.Error, style = MaterialTheme.typography.bodySmall)
-        }
-        successMessage?.let {
-            Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
-            Text(it, color = WantedColors.Success, style = MaterialTheme.typography.bodySmall)
         }
 
         Spacer(modifier = Modifier.height(WantedSpacing.Xl.dp))

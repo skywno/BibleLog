@@ -7,6 +7,7 @@ import com.example.biblelog.domain.model.CommunitySearchCategory
 import com.example.biblelog.domain.model.SmallGroupSummary
 import com.example.biblelog.domain.model.UserSearchResult
 import com.example.biblelog.domain.repository.BibleLogRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -176,6 +177,7 @@ class CommunitySearchViewModel(
                             _uiState.update { it.copy(users = users, isSearching = false, hasSearched = true) }
                         }
                         .onFailure { error ->
+                            if (error is CancellationException) return@launch
                             _uiState.update {
                                 it.copy(
                                     users = emptyList(),
@@ -192,6 +194,7 @@ class CommunitySearchViewModel(
                             _uiState.update { it.copy(churches = churches, isSearching = false, hasSearched = true) }
                         }
                         .onFailure { error ->
+                            if (error is CancellationException) return@launch
                             _uiState.update {
                                 it.copy(
                                     churches = emptyList(),
@@ -210,6 +213,7 @@ class CommunitySearchViewModel(
                             }
                         }
                         .onFailure { error ->
+                            if (error is CancellationException) return@launch
                             _uiState.update {
                                 it.copy(
                                     smallGroups = emptyList(),

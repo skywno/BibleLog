@@ -6,6 +6,7 @@ import com.example.biblelog.data.remote.ApiBibleReferenceDto
 import com.example.biblelog.data.remote.ApiChurchDto
 import com.example.biblelog.data.remote.ApiFeedItemDto
 import com.example.biblelog.data.remote.ApiMeditationNoteDto
+import com.example.biblelog.data.remote.ApiFollowUserDto
 import com.example.biblelog.data.remote.ApiFollowRequestDto
 import com.example.biblelog.data.remote.ApiNotificationItemDto
 import com.example.biblelog.data.remote.ApiReadingProgressDto
@@ -122,6 +123,8 @@ fun ApiUserProfileDto.toDomain() = UserProfile(
     photoUrl = photoUrl,
     profileVisibility = profileVisibility.toProfileVisibility(),
     isLoggedIn = isLoggedIn,
+    viewerCanViewContent = viewerCanViewContent,
+    viewerFollowPending = viewerFollowPending,
 )
 
 fun ApiUserSearchResultDto.toDomain() = UserSearchResult(
@@ -129,6 +132,12 @@ fun ApiUserSearchResultDto.toDomain() = UserSearchResult(
     nickname = nickname,
     bio = bio,
     photoUrl = photoUrl,
+)
+
+fun ApiFollowUserDto.toDomain() = UserSearchResult(
+    id = id,
+    nickname = nickname,
+    bio = bio,
 )
 
 fun ApiFollowRequestDto.toDomain() = FollowRequest(

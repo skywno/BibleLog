@@ -31,7 +31,17 @@ interface RelationRepository {
 
     suspend fun getFriendIds(): Result<Set<String>>
 
+    suspend fun listFriends(): Result<List<UserSearchResult>>
+
     suspend fun getFollowingIds(): Result<Set<String>>
+
+    suspend fun listFollowers(): Result<List<UserSearchResult>>
+
+    suspend fun listFollowingUsers(): Result<List<UserSearchResult>>
+
+    suspend fun getChurch(churchId: String): Result<ChurchSummary>
+
+    suspend fun getSmallGroup(groupId: String): Result<SmallGroupSummary>
 
     suspend fun getMemberships(): Result<UserMemberships>
 }

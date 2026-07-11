@@ -33,6 +33,7 @@ import com.example.biblelog.domain.model.MeditationNote
 import com.example.biblelog.domain.model.NoteVisibility
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
+import com.example.biblelog.ui.components.WantedStatusButton
 import com.example.biblelog.ui.components.WantedCard
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
@@ -86,14 +87,28 @@ fun UserProfileScreen(
                     if (profile.bio.isNotBlank()) {
                         Text(profile.bio, style = MaterialTheme.typography.bodyMedium, color = WantedColors.Secondary)
                     }
+                    if (!profile.viewerCanViewContent) {
+                        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                        Text(
+                            "비공개 프로필입니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WantedColors.Secondary,
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(WantedSpacing.Lg.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(WantedSpacing.Sm.dp)) {
                     when {
-                        uiState.isFriend -> Text("친구", color = WantedColors.Secondary)
-                        uiState.isPendingFriend -> Text("친구 요청됨", color = WantedColors.Secondary)
+                        uiState.isFriend -> WantedStatusButton(
+                            text = "친구",
+                            variant = WantedButtonVariant.Outlined,
+                        )
+                        uiState.isPendingFriend -> WantedStatusButton(
+                            text = "친구 요청됨",
+                            variant = WantedButtonVariant.Outlined,
+                        )
                         else -> WantedButton(
                             text = "친구 요청",
                             onClick = viewModel::sendFriendRequest,
@@ -101,8 +116,14 @@ fun UserProfileScreen(
                         )
                     }
                     when {
-                        uiState.isFollowing -> Text("팔로잉", color = WantedColors.Secondary)
-                        uiState.isPendingFollow -> Text("팔로우 요청됨", color = WantedColors.Secondary)
+                        uiState.isFollowing -> WantedStatusButton(
+                            text = "팔로잉",
+                            variant = WantedButtonVariant.Secondary,
+                        )
+                        uiState.isPendingFollow -> WantedStatusButton(
+                            text = "팔로우 요청됨",
+                            variant = WantedButtonVariant.Secondary,
+                        )
                         else -> WantedButton(
                             text = "팔로우",
                             onClick = viewModel::followUser,
@@ -117,15 +138,17 @@ fun UserProfileScreen(
                 }
 
                 Spacer(modifier = Modifier.height(WantedSpacing.Lg.dp))
-                Text("공개 묵상", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                if (profile.viewerCanViewContent) {
+                    Text("공개 묵상", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
 
-                if (uiState.notes.isEmpty()) {
-                    Text("표시할 묵상이 없습니다.", color = WantedColors.Secondary)
-                } else {
-                    uiState.notes.forEach { note ->
-                        PublicNoteCard(note = note)
-                        Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                    if (uiState.notes.isEmpty()) {
+                        Text("표시할 묵상이 없습니다.", color = WantedColors.Secondary)
+                    } else {
+                        uiState.notes.forEach { note ->
+                            PublicNoteCard(note = note)
+                            Spacer(modifier = Modifier.height(WantedSpacing.Sm.dp))
+                        }
                     }
                 }
             }

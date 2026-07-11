@@ -11,6 +11,8 @@ data class ApiUserProfileDto(
     @SerialName("photo_url") val photoUrl: String = "",
     @SerialName("profile_visibility") val profileVisibility: String = "public",
     @SerialName("is_logged_in") val isLoggedIn: Boolean = true,
+    @SerialName("viewer_can_view_content") val viewerCanViewContent: Boolean = true,
+    @SerialName("viewer_follow_pending") val viewerFollowPending: Boolean = false,
 )
 
 @Serializable

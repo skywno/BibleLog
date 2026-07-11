@@ -16,6 +16,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -47,6 +48,7 @@ fun createJsonHttpClient(
         if (tokenHolder != null) {
             install(AuthRefreshPlugin) {
                 onUnauthorized = { tokenHolder.onUnauthorized?.invoke() == true }
+                authorizationHeader = { tokenHolder.accessToken }
             }
         }
         defaultRequest {
@@ -70,7 +72,7 @@ class BibleLogApiClient(
     suspend fun refreshAuthToken(refreshToken: String): ApiAuthTokenResponseDto =
         httpClient.post("/auth/token/refresh") {
             setBody(ApiRefreshTokenRequestDto(refreshToken))
-        }.body()
+        }.decodeBody()
 
     suspend fun logout() {
         httpClient.post("/auth/logout") {
@@ -201,6 +203,15 @@ class BibleLogApiClient(
     suspend fun listFollowing(): List<ApiFollowUserDto> =
         authorizedGet("/follows")
 
+    suspend fun listFollowers(): List<ApiFollowUserDto> =
+        authorizedGet("/followers")
+
+    suspend fun getChurch(churchId: String): ApiChurchDto =
+        authorizedGet("/churches/$churchId")
+
+    suspend fun getSmallGroup(groupId: String): ApiSmallGroupDto =
+        authorizedGet("/small-groups/$groupId")
+
     suspend fun createComment(noteId: String, body: ApiCreateCommentRequestDto): ApiCommentDto =
         authorizedPost("/social/notes/$noteId/comments", body)
 
@@ -234,28 +245,31 @@ class BibleLogApiClient(
     private suspend inline fun <reified T> authorizedPostEmpty(path: String): T =
         httpClient.post(path) {
             authHeader()
-        }.body()
+        }.decodeBody()
 
     private suspend inline fun <reified T> authorizedGet(path: String): T =
         httpClient.get(path) {
             authHeader()
-        }.body()
+        }.decodeBody()
 
     private suspend inline fun <reified T, reified B> authorizedPost(path: String, body: B): T =
         httpClient.post(path) {
             authHeader()
             setBody(body)
-        }.body()
+        }.decodeBody()
 
     private suspend inline fun <reified T, reified B> authorizedPatch(path: String, body: B): T =
         httpClient.patch(path) {
             authHeader()
             setBody(body)
-        }.body()
+        }.decodeBody()
 
     private suspend fun authorizedDelete(path: String) {
-        httpClient.delete(path) {
+        val response = httpClient.delete(path) {
             authHeader()
+        }
+        if (!response.status.isSuccess()) {
+            throw apiHttpException(response)
         }
     }
 

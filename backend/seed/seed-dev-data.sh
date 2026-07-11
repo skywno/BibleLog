@@ -50,6 +50,17 @@ api_post() {
   fi
 }
 
+api_patch() {
+  local token="$1"
+  local path="$2"
+  local body="$3"
+  curl -sf -X PATCH \
+    -H "Authorization: Bearer ${token}" \
+    -H "Content-Type: application/json" \
+    -d "${body}" \
+    "${API_BASE}${path}"
+}
+
 is_seeded() {
   local token="$1"
   local count
@@ -114,6 +125,7 @@ MARK_TOKEN="$(jq -r '.access_token' <<<"${MARK_RESP}")"
 DEMO_TOKEN="$(jq -r '.access_token' <<<"${DEMO_RESP}")"
 
 DAVID_ID="$(jq -r '.user.id' <<<"${DAVID_RESP}")"
+SARAH_ID="$(jq -r '.user.id' <<<"${SARAH_RESP}")"
 MARK_ID="$(jq -r '.user.id' <<<"${MARK_RESP}")"
 
 if is_seeded "${GRACE_TOKEN}"; then
@@ -152,6 +164,13 @@ join_group "${MARK_TOKEN}" "${HOPE_GROUP_ID}"
 log "Creating friendships ..."
 create_friendship "${GRACE_TOKEN}" "${DAVID_ID}" "${DAVID_TOKEN}"
 create_friendship "${SARAH_TOKEN}" "${MARK_ID}" "${MARK_TOKEN}"
+
+log "Configuring private profile (Sarah) ..."
+api_patch "${SARAH_TOKEN}" "/users/me" \
+  '{"photo_url":"https://picsum.photos/seed/sarah","profile_visibility":"private"}' >/dev/null
+
+log "Creating pending follow request (Grace -> Sarah) ..."
+api_post "${GRACE_TOKEN}" "/follows/${SARAH_ID}" >/dev/null || true
 
 log "Creating journal notes ..."
 create_note "${GRACE_TOKEN}" \

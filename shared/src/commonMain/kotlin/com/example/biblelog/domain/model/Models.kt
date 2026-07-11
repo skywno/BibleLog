@@ -146,6 +146,8 @@ data class UserProfile(
     val photoUrl: String = "",
     val profileVisibility: ProfileVisibility = ProfileVisibility.PUBLIC,
     val isLoggedIn: Boolean,
+    val viewerCanViewContent: Boolean = true,
+    val viewerFollowPending: Boolean = false,
 )
 
 data class AiMessage(

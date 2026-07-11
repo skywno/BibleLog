@@ -30,9 +30,11 @@ import com.example.biblelog.feature.community.CommunityScreen
 import com.example.biblelog.feature.home.HomeScreen
 import com.example.biblelog.feature.journal.JournalScreen
 import com.example.biblelog.feature.profile.ProfileScreen
+import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.navigation.BibleSubRoute
 import com.example.biblelog.navigation.CommunityNavState
 import com.example.biblelog.navigation.CommunityNavStateSaver
+import com.example.biblelog.navigation.HomeSubRoute
 import com.example.biblelog.navigation.JournalNavState
 import com.example.biblelog.navigation.JournalNavStateSaver
 import com.example.biblelog.navigation.JournalSubRoute
@@ -76,6 +78,7 @@ fun BibleLogApp() {
 @Composable
 private fun BibleLogMainScaffold() {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Home) }
+    var homeSubRoute by rememberSaveable { mutableStateOf(HomeSubRoute.Dashboard) }
     var bibleSubRoute by rememberSaveable { mutableStateOf(BibleSubRoute.Dashboard) }
     var journalNavState by rememberSaveable(stateSaver = JournalNavStateSaver) {
         mutableStateOf(JournalNavState())
@@ -97,6 +100,7 @@ private fun BibleLogMainScaffold() {
                         selected = selectedTab == tab,
                         onClick = {
                             selectedTab = tab
+                            if (tab == MainTab.Home) homeSubRoute = HomeSubRoute.Dashboard
                             if (tab == MainTab.Bible) bibleSubRoute = BibleSubRoute.Dashboard
                             if (tab == MainTab.Journal) journalNavState = JournalNavState()
                             if (tab == MainTab.Community) communityNavState = CommunityNavState()
@@ -116,21 +120,35 @@ private fun BibleLogMainScaffold() {
         },
     ) { innerPadding ->
         when (selectedTab) {
-            MainTab.Home -> HomeScreen(
-                onNavigateToBible = {
-                    selectedTab = MainTab.Bible
-                    bibleSubRoute = BibleSubRoute.AddRecord
-                },
-                onNavigateToJournal = {
-                    selectedTab = MainTab.Journal
-                    journalNavState = JournalNavState(JournalSubRoute.Write)
-                },
-                onNavigateToAi = { selectedTab = MainTab.Ai },
-                modifier = Modifier.padding(innerPadding),
-            )
+            MainTab.Home -> when (homeSubRoute) {
+                HomeSubRoute.Dashboard -> HomeScreen(
+                    onNavigateToBible = {
+                        selectedTab = MainTab.Bible
+                        bibleSubRoute = BibleSubRoute.AddRecord
+                    },
+                    onNavigateToJournal = {
+                        selectedTab = MainTab.Journal
+                        journalNavState = JournalNavState(JournalSubRoute.Write)
+                    },
+                    onNavigateToAi = { selectedTab = MainTab.Ai },
+                    onNavigateToProfile = { homeSubRoute = HomeSubRoute.Profile },
+                    modifier = Modifier.padding(innerPadding),
+                )
+                HomeSubRoute.Profile -> ProfileScreen(
+                    onBack = { homeSubRoute = HomeSubRoute.Dashboard },
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
             MainTab.Bible -> BibleScreen(
                 subRoute = bibleSubRoute,
                 onSubRouteChange = { bibleSubRoute = it },
+                onNavigateToJournalWrite = { reference ->
+                    selectedTab = MainTab.Journal
+                    journalNavState = JournalNavState(
+                        route = JournalSubRoute.Write,
+                        prefillReference = reference,
+                    )
+                },
                 modifier = Modifier.padding(innerPadding),
             )
             MainTab.Journal -> JournalScreen(
@@ -144,7 +162,6 @@ private fun BibleLogMainScaffold() {
                 modifier = Modifier.padding(innerPadding),
             )
             MainTab.Ai -> AiChatScreen(modifier = Modifier.padding(innerPadding))
-            MainTab.Profile -> ProfileScreen(modifier = Modifier.padding(innerPadding))
         }
     }
 }

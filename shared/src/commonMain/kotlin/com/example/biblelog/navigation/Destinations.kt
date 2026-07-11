@@ -6,10 +6,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.biblelog.domain.model.BibleReference
 
 enum class MainTab(
     val label: String,
@@ -20,7 +20,11 @@ enum class MainTab(
     Journal("묵상", Icons.Default.Edit),
     Community("공동체", Icons.Default.Favorite),
     Ai("AI", Icons.Default.Info),
-    Profile("프로필", Icons.Default.Person),
+}
+
+enum class HomeSubRoute {
+    Dashboard,
+    Profile,
 }
 
 enum class BibleSubRoute {
@@ -43,6 +47,7 @@ enum class CommunitySubRoute {
 data class JournalNavState(
     val route: JournalSubRoute = JournalSubRoute.List,
     val editingNoteId: String? = null,
+    val prefillReference: BibleReference? = null,
 )
 
 data class CommunityNavState(
@@ -51,11 +56,18 @@ data class CommunityNavState(
 )
 
 val JournalNavStateSaver = listSaver(
-    save = { state -> listOf(state.route.name, state.editingNoteId) },
+    save = { state ->
+        listOf(
+            state.route.name,
+            state.editingNoteId,
+            state.prefillReference.toSaveableString(),
+        )
+    },
     restore = { saved ->
         JournalNavState(
             route = JournalSubRoute.valueOf(saved[0] as String),
             editingNoteId = saved[1],
+            prefillReference = parseBibleReferenceSaveable(saved.getOrNull(2) as String?),
         )
     },
 )

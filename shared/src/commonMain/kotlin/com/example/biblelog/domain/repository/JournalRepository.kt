@@ -19,4 +19,6 @@ interface JournalRepository {
     ): Result<MeditationNote>
 
     suspend fun deleteNote(noteId: String): Result<Unit>
+
+    suspend fun refreshJournalNotes(): Result<Unit>
 }

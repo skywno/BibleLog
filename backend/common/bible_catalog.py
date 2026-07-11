@@ -39,3 +39,39 @@ def is_valid_range(
 
 def normalize_end_book_id(book_id: int, end_book_id: int | None) -> int:
     return end_book_id if end_book_id is not None else book_id
+
+
+def total_verses_in_book(book_id: int) -> int:
+    counts = VERSES_PER_CHAPTER.get(book_id)
+    if not counts:
+        return 0
+    return sum(counts)
+
+
+def total_verses_up_to_book(book_id: int) -> int:
+    return sum(total_verses_in_book(i) for i in range(1, book_id + 1))
+
+
+TOTAL_BIBLE_VERSES = total_verses_up_to_book(TOTAL_BOOKS)
+OLD_TESTAMENT_BOOKS = range(1, 40)
+NEW_TESTAMENT_BOOKS = range(40, 67)
+TOTAL_OLD_TESTAMENT_VERSES = sum(total_verses_in_book(i) for i in OLD_TESTAMENT_BOOKS)
+TOTAL_NEW_TESTAMENT_VERSES = sum(total_verses_in_book(i) for i in NEW_TESTAMENT_BOOKS)
+
+
+def iter_verses_in_range(
+    start_book_id: int,
+    start_chapter: int,
+    start_verse: int,
+    end_book_id: int,
+    end_chapter: int,
+    end_verse: int,
+):
+    start_key = compare_point(start_book_id, start_chapter, start_verse)
+    end_key = compare_point(end_book_id, end_chapter, end_verse)
+    for book_id in range(start_book_id, end_book_id + 1):
+        for chapter in range(1, total_chapters(book_id) + 1):
+            for verse in range(1, verse_count(book_id, chapter) + 1):
+                key = compare_point(book_id, chapter, verse)
+                if start_key <= key <= end_key:
+                    yield book_id, chapter, verse

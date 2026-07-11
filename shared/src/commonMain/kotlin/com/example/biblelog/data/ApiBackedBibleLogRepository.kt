@@ -32,6 +32,7 @@ import com.example.biblelog.domain.model.UserMemberships
 import com.example.biblelog.domain.model.UserProfile
 import com.example.biblelog.domain.model.UserSearchResult
 import com.example.biblelog.domain.repository.BibleLogRepository
+import com.example.biblelog.util.suspendRunCatching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -146,6 +147,10 @@ class ApiBackedBibleLogRepository(
         refreshFeed(reset = true)
     }
 
+    override suspend fun refreshJournalNotes(): Result<Unit> = runCatching {
+        _notes.value = apiClient.listJournalNotes().map { it.toDomain() }
+    }
+
     override suspend fun addComment(noteId: String, content: String): Result<Comment> = runCatching {
         val comment = apiClient.createComment(noteId, ApiCreateCommentRequestDto(content)).toDomain()
         refreshFeed(reset = true)
@@ -211,15 +216,15 @@ class ApiBackedBibleLogRepository(
         apiClient.listUserNotes(userId).map { it.toDomain() }
     }
 
-    override suspend fun searchUsers(query: String): Result<List<UserSearchResult>> = runCatching {
+    override suspend fun searchUsers(query: String): Result<List<UserSearchResult>> = suspendRunCatching {
         apiClient.searchUsers(query).map { it.toDomain() }
     }
 
-    override suspend fun searchChurches(query: String): Result<List<ChurchSummary>> = runCatching {
+    override suspend fun searchChurches(query: String): Result<List<ChurchSummary>> = suspendRunCatching {
         apiClient.searchChurches(query).map { it.toDomain() }
     }
 
-    override suspend fun searchSmallGroups(query: String): Result<List<SmallGroupSummary>> = runCatching {
+    override suspend fun searchSmallGroups(query: String): Result<List<SmallGroupSummary>> = suspendRunCatching {
         apiClient.searchSmallGroups(query).map { it.toDomain() }
     }
 
@@ -259,8 +264,28 @@ class ApiBackedBibleLogRepository(
         apiClient.listFriends().map { it.id }.toSet()
     }
 
+    override suspend fun listFriends(): Result<List<UserSearchResult>> = runCatching {
+        apiClient.listFriends().map { it.toDomain() }
+    }
+
     override suspend fun getFollowingIds(): Result<Set<String>> = runCatching {
         apiClient.listFollowing().map { it.id }.toSet()
+    }
+
+    override suspend fun listFollowers(): Result<List<UserSearchResult>> = runCatching {
+        apiClient.listFollowers().map { it.toDomain() }
+    }
+
+    override suspend fun listFollowingUsers(): Result<List<UserSearchResult>> = runCatching {
+        apiClient.listFollowing().map { it.toDomain() }
+    }
+
+    override suspend fun getChurch(churchId: String): Result<ChurchSummary> = runCatching {
+        apiClient.getChurch(churchId).toDomain()
+    }
+
+    override suspend fun getSmallGroup(groupId: String): Result<SmallGroupSummary> = runCatching {
+        apiClient.getSmallGroup(groupId).toDomain()
     }
 
     override suspend fun getMemberships(): Result<UserMemberships> = runCatching {
