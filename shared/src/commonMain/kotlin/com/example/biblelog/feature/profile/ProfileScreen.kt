@@ -26,14 +26,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.example.biblelog.di.LocalAuthRepository
-import com.example.biblelog.di.LocalBibleLogRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
 import com.example.biblelog.ui.components.WantedCard
@@ -41,18 +40,20 @@ import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
 import com.example.biblelog.util.avatarInitial
-import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(modifier: Modifier = Modifier) {
-    val repository = LocalBibleLogRepository.current
-    val authRepository = LocalAuthRepository.current
-    val user by repository.currentUser.collectAsState()
-    val notifications by repository.notifications.collectAsState()
+    val viewModel: ProfileViewModel = viewModel {
+        ProfileViewModel(
+            AppContainer.repository,
+            AppContainer.sessionCoordinator,
+        )
+    }
+    val user by viewModel.currentUser.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
     var nickname by remember(user) { mutableStateOf(user.nickname) }
     var bio by remember(user) { mutableStateOf(user.bio) }
     var isEditing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
@@ -106,8 +107,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
                     WantedButton(
                         text = "저장",
                         onClick = {
-                            scope.launch {
-                                repository.updateProfile(nickname, bio)
+                            viewModel.updateProfile(nickname, bio) {
                                 isEditing = false
                             }
                         },
@@ -163,11 +163,7 @@ fun ProfileScreen(modifier: Modifier = Modifier) {
             icon = { Icon(LogoutIcon, null) },
             title = "로그아웃",
             subtitle = "현재 계정에서 로그아웃",
-            onClick = {
-                scope.launch {
-                    authRepository.logout()
-                }
-            },
+            onClick = { viewModel.logout() },
         )
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))

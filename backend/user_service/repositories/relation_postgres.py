@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import psycopg
 
-from shared.domain import UserMembership
+from common.domain import UserMembership
 from user_service.repositories.relation import RelationRepository
 
 

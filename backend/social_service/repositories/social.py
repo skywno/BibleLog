@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from shared.models import FAITH_REACTIONS, FaithReaction
+from common.models import FAITH_REACTIONS, FaithReaction
 
 
 class SocialRepository(ABC):

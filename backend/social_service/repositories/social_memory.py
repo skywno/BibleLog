@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from shared.models import FAITH_REACTIONS, FaithReaction
+from common.models import FAITH_REACTIONS, FaithReaction
 from social_service.repositories.social import SocialRepository
 
 

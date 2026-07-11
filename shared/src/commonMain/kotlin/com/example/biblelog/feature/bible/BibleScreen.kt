@@ -21,12 +21,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.data.BibleCatalog
-import com.example.biblelog.di.LocalBibleLogRepository
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.navigation.BibleSubRoute
 import com.example.biblelog.ui.components.StreakCalendar
@@ -39,7 +39,6 @@ import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
 import com.example.biblelog.util.today
-import kotlinx.coroutines.launch
 
 @Composable
 fun BibleScreen(
@@ -47,17 +46,24 @@ fun BibleScreen(
     onSubRouteChange: (BibleSubRoute) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val viewModel: BibleViewModel = viewModel {
+        BibleViewModel(AppContainer.repository)
+    }
+
     when (subRoute) {
         BibleSubRoute.Dashboard -> BibleDashboardScreen(
+            viewModel = viewModel,
             onAddRecord = { onSubRouteChange(BibleSubRoute.AddRecord) },
             onViewStats = { onSubRouteChange(BibleSubRoute.Stats) },
             modifier = modifier,
         )
         BibleSubRoute.AddRecord -> AddReadingRecordScreen(
+            viewModel = viewModel,
             onBack = { onSubRouteChange(BibleSubRoute.Dashboard) },
             modifier = modifier,
         )
         BibleSubRoute.Stats -> BibleStatsScreen(
+            viewModel = viewModel,
             onBack = { onSubRouteChange(BibleSubRoute.Dashboard) },
             modifier = modifier,
         )
@@ -66,15 +72,15 @@ fun BibleScreen(
 
 @Composable
 private fun BibleDashboardScreen(
+    viewModel: BibleViewModel,
     onAddRecord: () -> Unit,
     onViewStats: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val progress = repository.getReadingProgress()
-    val stats = repository.getReadingStats()
-    val readingDates = repository.getReadingDates()
-    val records by repository.readingRecords.collectAsState()
+    val progress by viewModel.readingProgress.collectAsState()
+    val stats by viewModel.readingStats.collectAsState()
+    val readingDates = viewModel.getReadingDates()
+    val records by viewModel.readingRecords.collectAsState()
 
     Column(
         modifier = modifier
@@ -149,12 +155,13 @@ private fun BibleDashboardScreen(
 
 @Composable
 private fun AddReadingRecordScreen(
+    viewModel: BibleViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val scope = rememberCoroutineScope()
     val books = BibleCatalog.books
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val successMessage by viewModel.successMessage.collectAsState()
 
     var selectedBookIndex by remember { mutableIntStateOf(0) }
     var startChapter by remember { mutableStateOf("1") }
@@ -162,8 +169,6 @@ private fun AddReadingRecordScreen(
     var endChapter by remember { mutableStateOf("1") }
     var endVerse by remember { mutableStateOf("10") }
     var minutes by remember { mutableStateOf("15") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -269,31 +274,19 @@ private fun AddReadingRecordScreen(
         WantedButton(
             text = "저장",
             onClick = {
-                scope.launch {
-                    val book = books[selectedBookIndex]
-                    val reference = BibleReference(
-                        bookId = book.id,
-                        startChapter = startChapter.toIntOrNull() ?: 1,
-                        startVerse = startVerse.toIntOrNull() ?: 1,
-                        endChapter = endChapter.toIntOrNull() ?: 1,
-                        endVerse = endVerse.toIntOrNull() ?: 1,
-                    )
-                    val result = repository.addReadingRecord(
-                        reference = reference,
-                        minutesRead = minutes.toIntOrNull() ?: 0,
-                        date = today(),
-                    )
-                    result.fold(
-                        onSuccess = {
-                            successMessage = "읽기 기록이 저장되었습니다."
-                            errorMessage = null
-                        },
-                        onFailure = { e ->
-                            errorMessage = e.message
-                            successMessage = null
-                        },
-                    )
-                }
+                val book = books[selectedBookIndex]
+                val reference = BibleReference(
+                    bookId = book.id,
+                    startChapter = startChapter.toIntOrNull() ?: 1,
+                    startVerse = startVerse.toIntOrNull() ?: 1,
+                    endChapter = endChapter.toIntOrNull() ?: 1,
+                    endVerse = endVerse.toIntOrNull() ?: 1,
+                )
+                viewModel.addReadingRecord(
+                    reference = reference,
+                    minutesRead = minutes.toIntOrNull() ?: 0,
+                    date = today(),
+                )
             },
             modifier = Modifier.fillMaxWidth(),
         )
@@ -302,12 +295,12 @@ private fun AddReadingRecordScreen(
 
 @Composable
 private fun BibleStatsScreen(
+    viewModel: BibleViewModel,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val progress = repository.getReadingProgress()
-    val stats = repository.getReadingStats()
+    val progress by viewModel.readingProgress.collectAsState()
+    val stats by viewModel.readingStats.collectAsState()
     var testamentFilter by remember { mutableIntStateOf(0) }
 
     Column(

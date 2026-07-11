@@ -5,8 +5,8 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-from shared.domain import NoteRecord
-from shared.models import BibleReference, Emotion, NoteVisibility, UpsertJournalNoteRequest
+from common.domain import NoteRecord
+from common.models import BibleReference, Emotion, NoteVisibility, UpsertJournalNoteRequest
 
 
 class NoteRepository(ABC):

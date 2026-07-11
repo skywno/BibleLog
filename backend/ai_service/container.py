@@ -3,30 +3,31 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ai_service.providers import create_ai_provider
-from shared.config import Settings, get_settings
-from shared.db.postgres import get_postgres
-from user_service.repositories.user import UserRepository
-from user_service.repositories.user_memory import MemoryUserRepository
-from user_service.repositories.user_postgres import PostgresUserRepository
+from ai_service.repositories.ai import AiConversationRepository
+from ai_service.repositories.ai_memory import MemoryAiConversationRepository
+from ai_service.repositories.ai_postgres import PostgresAiConversationRepository
+from ai_service.settings import AiServiceSettings, get_ai_settings
+from common.db.postgres import get_postgres
 
 
 @dataclass
 class AiContainer:
-    settings: Settings
-    users: UserRepository
+    settings: AiServiceSettings
+    conversations: AiConversationRepository
 
 
 _container: AiContainer | None = None
 
 
-def build_ai_container(settings: Settings | None = None) -> AiContainer:
-    settings = settings or get_settings()
+def build_ai_container(settings: AiServiceSettings | None = None) -> AiContainer:
+    settings = settings or get_ai_settings()
     postgres = get_postgres(settings)
     if postgres is not None:
-        users: UserRepository = PostgresUserRepository(postgres)
+        conversations: AiConversationRepository = PostgresAiConversationRepository(postgres)
     else:
-        users = MemoryUserRepository()
-    return AiContainer(settings=settings, users=users)
+        conversations = MemoryAiConversationRepository()
+    create_ai_provider(settings)
+    return AiContainer(settings=settings, conversations=conversations)
 
 
 def get_ai_container() -> AiContainer:

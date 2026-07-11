@@ -5,7 +5,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import UTC, date, datetime, timedelta
 
-from shared.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
+from common.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
 
 
 class ReadingRepository(ABC):

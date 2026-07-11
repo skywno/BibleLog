@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from shared.models import CreateReadingRecordRequest, ReadingProgress, ReadingRecord, ReadingStats
+from common.models import CreateReadingRecordRequest, ReadingProgress, ReadingRecord, ReadingStats
 from reading_service.repositories.reading import (
     ReadingRepository,
     reading_progress_from_records,

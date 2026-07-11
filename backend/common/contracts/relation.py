@@ -1,0 +1,15 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from common.domain import UserMembership
+
+
+class RelationReader(Protocol):
+    def list_friend_ids(self, user_id: str) -> list[str]: ...
+
+    def get_membership(self, user_id: str) -> UserMembership: ...
+
+    def list_group_member_ids(self, group_ids: set[str]) -> list[str]: ...
+
+    def list_church_member_ids(self, church_id: str) -> list[str]: ...

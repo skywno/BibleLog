@@ -8,7 +8,7 @@ Architecture: [`../architecture.md`](../architecture.md)
 ```
 backend/
 ├── traefik/              # API Gateway (Traefik dynamic routing)
-├── shared/               # Config, models, DB clients, events, JWT helpers
+├── common/               # Config, models, DB clients, Kafka events, JWT, contracts
 ├── user_service/         # /auth, /users (+ internal relation APIs)
 ├── note_service/         # /journal (+ internal note APIs)
 ├── feed_service/         # /feed (Redis ZSET + assembly)

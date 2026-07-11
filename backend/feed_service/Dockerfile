@@ -9,10 +9,7 @@ RUN apt-get update \
 COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY shared ./shared
-COPY user_service ./user_service
-COPY note_service ./note_service
-COPY social_service ./social_service
+COPY common ./common
 COPY feed_service ./feed_service
 
 ENV PYTHONPATH=/app

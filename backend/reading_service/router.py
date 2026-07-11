@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from reading_service.deps import CurrentUserIdDep, ReadingContainerDep, get_current_user_id
-from shared.models import (
+from common.models import (
     CreateReadingRecordRequest,
     ReadingProgress,
     ReadingRecord,

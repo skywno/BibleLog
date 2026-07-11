@@ -15,7 +15,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,7 +38,6 @@ import com.example.biblelog.navigation.MainTab
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedTheme
 import androidx.compose.foundation.layout.Box
-import kotlinx.coroutines.launch
 
 @Composable
 @Preview
@@ -56,13 +54,9 @@ fun BibleLogApp() {
     val authRepository = LocalAuthRepository.current
     val session by authRepository.session.collectAsState()
     var isBootstrapping by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        val restored = authRepository.restoreSession()
-        if (restored) {
-            runCatching { AppContainer.repository.refreshAll() }
-        }
+        AppContainer.sessionCoordinator.restoreSession()
         isBootstrapping = false
     }
 
@@ -72,29 +66,17 @@ fun BibleLogApp() {
                 CircularProgressIndicator(color = WantedColors.Primary)
             }
         }
-        session == null -> LoginScreen(
-            onLoggedIn = {
-                scope.launch {
-                    runCatching { AppContainer.repository.refreshAll() }
-                }
-            },
-        )
+        session == null -> LoginScreen()
         else -> BibleLogMainScaffold()
     }
 }
 
 @Composable
 private fun BibleLogMainScaffold() {
-    val authRepository = LocalAuthRepository.current
-    val session by authRepository.session.collectAsState()
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Home) }
     var bibleSubRoute by rememberSaveable { mutableStateOf(BibleSubRoute.Dashboard) }
     var journalNavState by rememberSaveable(stateSaver = JournalNavStateSaver) {
         mutableStateOf(JournalNavState())
-    }
-
-    LaunchedEffect(session?.user?.id) {
-        session?.user?.let { AppContainer.repository.seedCurrentUser(it) }
     }
 
     Scaffold(

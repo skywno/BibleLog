@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from feed_service.deps import FeedContainerDep
-from shared.internal import verify_internal_token
+from common.internal import verify_internal_token
 
 router = APIRouter(prefix="/internal", tags=["internal"], include_in_schema=False)
 

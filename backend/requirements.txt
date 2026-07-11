@@ -9,4 +9,4 @@ python-multipart>=0.0.17
 itsdangerous>=2.2.0
 cassandra-driver>=3.29.0
 redis>=5.2.0
-psycopg[binary]>=3.2.0
+aiokafka>=0.12.0

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from shared.models import UpdateUserProfileRequest, UserProfile
+from common.models import UpdateUserProfileRequest, UserProfile
 from user_service.deps import CurrentUserIdDep, UserContainerDep, get_current_user_id
 
 router = APIRouter(

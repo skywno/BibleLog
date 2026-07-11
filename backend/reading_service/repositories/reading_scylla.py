@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 from cassandra.cluster import Session
 
-from shared.db.scylla import scylla_date, scylla_timestamp
-from shared.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
+from common.db.scylla import scylla_date, scylla_timestamp
+from common.models import BibleReference, CreateReadingRecordRequest, ReadingRecord
 from reading_service.repositories.reading import ReadingRepository
 
 

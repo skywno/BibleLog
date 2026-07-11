@@ -22,29 +22,30 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.data.BibleCatalog
 import com.example.biblelog.domain.model.AiConversationMode
-import com.example.biblelog.di.LocalBibleLogRepository
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedRadius
 import com.example.biblelog.ui.theme.WantedSpacing
-import kotlinx.coroutines.launch
 
 @Composable
 fun AiChatScreen(modifier: Modifier = Modifier) {
-    val repository = LocalBibleLogRepository.current
-    val messages by repository.aiMessages.collectAsState()
+    val viewModel: AiChatViewModel = viewModel {
+        AiChatViewModel(AppContainer.repository)
+    }
+    val messages by viewModel.aiMessages.collectAsState()
+    val isSending by viewModel.isSending.collectAsState()
     var input by remember { mutableStateOf("") }
     var isPrayerMode by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -104,14 +105,13 @@ fun AiChatScreen(modifier: Modifier = Modifier) {
             )
             WantedButton(
                 text = "전송",
+                enabled = !isSending,
                 onClick = {
                     if (input.isBlank()) return@WantedButton
                     val text = input
                     val mode = if (isPrayerMode) AiConversationMode.PRAYER else AiConversationMode.CHAT
-                    scope.launch {
-                        repository.sendAiMessage(text, mode)
-                        input = ""
-                    }
+                    viewModel.sendMessage(text, mode)
+                    input = ""
                 },
             )
         }

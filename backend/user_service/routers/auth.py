@@ -8,16 +8,16 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import RedirectResponse
 
-from shared.auth.jwt import create_access_token
+from common.auth.jwt import create_access_token
 from user_service.auth_tokens import (
     create_refresh_token,
     dev_login,
     issue_tokens,
 )
-from shared.config import Settings
-from shared.deps import SettingsDep, get_current_user_id
+from common.config import Settings
+from common.deps import SettingsDep, get_current_user_id
 from user_service.deps import UserContainerDep
-from shared.models import AuthTokenResponse, OAuthAuthorizeResponse, RefreshTokenRequest
+from common.models import AuthTokenResponse, OAuthAuthorizeResponse, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -2,29 +2,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from feed_service.cache import FeedCacheService
-from shared.config import Settings, get_settings
-from shared.db.redis_client import get_redis
-from shared.db.scylla import get_scylla_session
+from common.db.scylla import get_scylla_session
+from common.events.kafka_bus import KafkaEventBus, get_event_bus
 from social_service.repositories.social import SocialRepository
 from social_service.repositories.social_memory import MemorySocialRepository
 from social_service.repositories.social_scylla import ScyllaSocialRepository
 from social_service.service import SocialService
+from social_service.settings import SocialServiceSettings, get_social_settings
 
 
 @dataclass
 class SocialContainer:
-    settings: Settings
+    settings: SocialServiceSettings
     social: SocialRepository
-    feed_cache: FeedCacheService
     social_service: SocialService
+    event_bus: KafkaEventBus
 
 
 _container: SocialContainer | None = None
 
 
-def build_social_container(settings: Settings | None = None) -> SocialContainer:
-    settings = settings or get_settings()
+def build_social_container(settings: SocialServiceSettings | None = None) -> SocialContainer:
+    settings = settings or get_social_settings()
     if settings.storage_backend == "scylla":
         session = get_scylla_session(settings)
         if session is None:
@@ -32,14 +31,14 @@ def build_social_container(settings: Settings | None = None) -> SocialContainer:
         social: SocialRepository = ScyllaSocialRepository(session)
     else:
         social = MemorySocialRepository()
-    get_redis(settings)
-    feed_cache = FeedCacheService(settings)
-    social_service = SocialService(social, feed_cache)
+
+    event_bus = get_event_bus(settings, group_id="social-service")
+    social_service = SocialService(social, event_bus)
     return SocialContainer(
         settings=settings,
         social=social,
-        feed_cache=feed_cache,
         social_service=social_service,
+        event_bus=event_bus,
     )
 
 

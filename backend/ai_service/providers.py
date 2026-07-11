@@ -118,10 +118,10 @@ class AnthropicAiProvider(AiProvider):
         return AiCompletionResult(content=content)
 
 
-from shared.config import Settings
+from ai_service.settings import AiServiceSettings
 
 
-def create_ai_provider(settings: Settings) -> AiProvider:
+def create_ai_provider(settings: AiServiceSettings) -> AiProvider:
     provider = settings.ai_provider.lower()
     if provider == "openai":
         if not settings.openai_api_key:

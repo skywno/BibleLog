@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 from datetime import datetime
 
-from shared.domain import FeedTimelineEntry
+from common.domain import FeedTimelineEntry
 
 
 def encode_cursor(created_at: datetime, note_id: str) -> str:

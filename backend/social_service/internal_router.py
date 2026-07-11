@@ -2,8 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from shared.internal import verify_internal_token
-from shared.models import (
+from common.internal import verify_internal_token
+from common.models import (
     CommentCountBatchRequest,
     CommentCountBatchResponse,
     NoteCommentCount,
@@ -37,13 +37,13 @@ def comment_counts_internal(
 
 
 @router.post("/reactions/{note_id}/toggle", dependencies=[Depends(verify_internal_token)])
-def toggle_reaction_internal(
+async def toggle_reaction_internal(
     note_id: str,
     payload: ToggleReactionRequest,
     container: SocialContainerDep,
     user_id: Annotated[str, Query()],
 ) -> dict:
-    active = container.social_service.toggle_reaction(note_id, user_id, payload.reaction)
+    active = await container.social_service.toggle_reaction(note_id, user_id, payload.reaction)
     return {"active_reaction": active}
 
 

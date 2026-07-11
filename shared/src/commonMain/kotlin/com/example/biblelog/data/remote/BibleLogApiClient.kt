@@ -20,7 +20,10 @@ import kotlinx.serialization.json.Json
 
 expect fun createPlatformHttpClient(): HttpClient
 
-fun createJsonHttpClient(baseUrl: String = ApiConfig.BASE_URL): HttpClient {
+fun createJsonHttpClient(
+    baseUrl: String = ApiConfig.BASE_URL,
+    tokenHolder: AuthTokenHolder? = null,
+): HttpClient {
     return createPlatformHttpClient().config {
         install(ContentNegotiation) {
             json(
@@ -39,6 +42,11 @@ fun createJsonHttpClient(baseUrl: String = ApiConfig.BASE_URL): HttpClient {
                 }
             }
         }
+        if (tokenHolder != null) {
+            install(AuthRefreshPlugin) {
+                onUnauthorized = { tokenHolder.onUnauthorized?.invoke() == true }
+            }
+        }
         defaultRequest {
             url(baseUrl)
             contentType(ContentType.Application.Json)
@@ -48,15 +56,19 @@ fun createJsonHttpClient(baseUrl: String = ApiConfig.BASE_URL): HttpClient {
 
 class BibleLogApiClient(
     private val httpClient: HttpClient,
+    private val tokenHolder: AuthTokenHolder,
 ) {
-    private var accessToken: String? = null
-
     fun setAccessToken(token: String?) {
-        accessToken = token
+        tokenHolder.accessToken = token
     }
 
     suspend fun devLogin(email: String = "demo@biblelog.app"): ApiAuthTokenResponseDto =
         httpClient.post("/auth/dev/login?email=$email").body()
+
+    suspend fun refreshAuthToken(refreshToken: String): ApiAuthTokenResponseDto =
+        httpClient.post("/auth/token/refresh") {
+            setBody(ApiRefreshTokenRequestDto(refreshToken))
+        }.body()
 
     suspend fun logout() {
         httpClient.post("/auth/logout") {
@@ -101,8 +113,14 @@ class BibleLogApiClient(
         authorizedDelete("/journal/notes/$noteId")
     }
 
-    suspend fun listFeed(filter: String = "all", sort: String = "latest"): ApiFeedPageResponseDto =
-        authorizedGet("/feed?filter=$filter&sort=$sort")
+    suspend fun listFeed(
+        filter: String = "all",
+        sort: String = "latest",
+        cursor: String? = null,
+    ): ApiFeedPageResponseDto {
+        val cursorParam = cursor?.let { "&cursor=$it" }.orEmpty()
+        return authorizedGet("/feed?filter=$filter&sort=$sort$cursorParam")
+    }
 
     suspend fun toggleReaction(noteId: String, body: ApiToggleReactionRequestDto): ApiFeedItemDto =
         authorizedPost("/feed/$noteId/reactions", body)
@@ -148,6 +166,6 @@ class BibleLogApiClient(
     }
 
     private fun io.ktor.client.request.HttpRequestBuilder.authHeader() {
-        accessToken?.let { header("Authorization", "Bearer $it") }
+        tokenHolder.accessToken?.let { header("Authorization", "Bearer $it") }
     }
 }

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from shared.models import CreateReadingRecordRequest, ReadingRecord
+from common.models import CreateReadingRecordRequest, ReadingRecord
 from reading_service.repositories.reading import ReadingRepository
 
 

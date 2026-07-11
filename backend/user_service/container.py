@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from shared.config import Settings, get_settings
-from shared.db.postgres import get_postgres
+from common.db.postgres import get_postgres
 from user_service.repositories.relation import RelationRepository
 from user_service.repositories.relation_memory import MemoryRelationRepository
 from user_service.repositories.relation_postgres import PostgresRelationRepository
 from user_service.repositories.user import UserRepository
 from user_service.repositories.user_memory import MemoryUserRepository
 from user_service.repositories.user_postgres import PostgresUserRepository
+from user_service.settings import UserServiceSettings, get_user_settings
 
 
 @dataclass
 class UserContainer:
-    settings: Settings
+    settings: UserServiceSettings
     users: UserRepository
     relations: RelationRepository
 
@@ -22,8 +22,8 @@ class UserContainer:
 _container: UserContainer | None = None
 
 
-def build_user_container(settings: Settings | None = None) -> UserContainer:
-    settings = settings or get_settings()
+def build_user_container(settings: UserServiceSettings | None = None) -> UserContainer:
+    settings = settings or get_user_settings()
     postgres = get_postgres(settings)
     if postgres is not None:
         users: UserRepository = PostgresUserRepository(postgres)

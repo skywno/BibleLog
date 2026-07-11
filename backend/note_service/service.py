@@ -2,86 +2,73 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from shared.config import Settings
-from shared.domain import FeedTimelineEntry, NoteRecord
-from shared.events.bus import event_bus
-from shared.models import (
+from common.cache.feed_cache import FeedCacheService
+from common.clients.relation import HttpRelationClient
+from common.clients.user import HttpUserClient
+from common.domain import FeedTimelineEntry, NoteRecord
+from common.events.kafka_bus import KafkaEventBus
+from common.models import (
     MeditationNote,
     NoteSummary,
     NoteVisibility,
     UpsertJournalNoteRequest,
 )
 from note_service.repositories.note import NoteRepository
-from user_service.repositories.relation import RelationRepository
-from user_service.repositories.user import UserRepository
-from feed_service.cache import FeedCacheService
+from note_service.settings import NoteServiceSettings
 
 
 class NoteService:
     def __init__(
         self,
         notes: NoteRepository,
-        users: UserRepository,
-        relations: RelationRepository,
+        users: HttpUserClient,
+        relations: HttpRelationClient,
         feed_cache: FeedCacheService,
-        settings: Settings,
+        settings: NoteServiceSettings,
+        event_bus: KafkaEventBus,
     ) -> None:
         self._notes = notes
         self._users = users
         self._relations = relations
         self._feed_cache = feed_cache
         self._settings = settings
-        self._register_events()
+        self._event_bus = event_bus
 
-    def _register_events(self) -> None:
-        event_bus.subscribe("NotePublished", self._on_note_changed)
-        event_bus.subscribe("NoteUpdated", self._on_note_changed)
-        event_bus.subscribe("NoteDeleted", self._on_note_deleted)
-
-    def _on_note_changed(self, payload: dict) -> None:
-        note_id = payload["note_id"]
-        self._feed_cache.invalidate_note_summary(note_id)
-        self._feed_cache.invalidate_all_feeds()
-
-    def _on_note_deleted(self, payload: dict) -> None:
-        note_id = payload["note_id"]
-        self._feed_cache.invalidate_note_summary(note_id)
-        self._feed_cache.remove_note_from_feeds(note_id)
-
-    def create(self, author_id: str, request: UpsertJournalNoteRequest) -> MeditationNote:
+    async def create(self, author_id: str, request: UpsertJournalNoteRequest) -> MeditationNote:
         record = self._notes.create(author_id, request)
-        event_bus.publish(
+        await self._event_bus.publish(
             "NotePublished",
             {"note_id": record.note_id, "author_id": author_id, "visibility": record.visibility},
         )
-        return self._to_meditation_note(record)
+        return await self._to_meditation_note(record)
 
-    def update(
+    async def update(
         self,
         author_id: str,
         note_id: str,
         request: UpsertJournalNoteRequest,
     ) -> MeditationNote:
         record = self._notes.update(author_id, note_id, request)
-        event_bus.publish("NoteUpdated", {"note_id": note_id, "author_id": author_id})
-        return self._to_meditation_note(record)
+        await self._event_bus.publish("NoteUpdated", {"note_id": note_id, "author_id": author_id})
+        return await self._to_meditation_note(record)
 
-    def delete(self, author_id: str, note_id: str) -> None:
+    async def delete(self, author_id: str, note_id: str) -> None:
         self._notes.delete(author_id, note_id)
-        event_bus.publish("NoteDeleted", {"note_id": note_id, "author_id": author_id})
+        await self._event_bus.publish("NoteDeleted", {"note_id": note_id, "author_id": author_id})
 
-    def get_detail(self, viewer_id: str, note_id: str) -> MeditationNote:
+    async def get_detail(self, viewer_id: str, note_id: str) -> MeditationNote:
         record = self._notes.get_by_id(note_id)
         if record is None or record.is_deleted:
             raise KeyError(note_id)
-        if not self._can_view(viewer_id, record):
+        if not await self._can_view(viewer_id, record):
             raise PermissionError(note_id)
-        return self._to_meditation_note(record)
+        return await self._to_meditation_note(record)
 
-    def list_mine(self, author_id: str) -> list[MeditationNote]:
-        return [self._to_meditation_note(record) for record in self._notes.list_by_author(author_id)]
+    async def list_mine(self, author_id: str) -> list[MeditationNote]:
+        records = self._notes.list_by_author(author_id)
+        return [await self._to_meditation_note(record) for record in records]
 
-    def batch_summaries(self, viewer_id: str, note_ids: list[str]) -> list[NoteSummary]:
+    async def batch_summaries(self, viewer_id: str, note_ids: list[str]) -> list[NoteSummary]:
         summaries: list[NoteSummary] = []
         for note_id in note_ids:
             cached = self._feed_cache.get_note_summary(note_id)
@@ -89,9 +76,9 @@ class NoteService:
                 summaries.append(cached)
                 continue
             record = self._notes.get_by_id(note_id)
-            if record is None or record.is_deleted or not self._can_view(viewer_id, record):
+            if record is None or record.is_deleted or not await self._can_view(viewer_id, record):
                 continue
-            summary = self._to_summary(record)
+            summary = await self._to_summary(record)
             self._feed_cache.set_note_summary(summary)
             summaries.append(summary)
         id_order = {note_id: index for index, note_id in enumerate(note_ids)}
@@ -104,7 +91,7 @@ class NoteService:
             return None
         return self._to_timeline_entry(record)
 
-    def recent_entries_for_feed(
+    async def recent_entries_for_feed(
         self,
         viewer_id: str,
         author_ids: list[str],
@@ -119,12 +106,12 @@ class NoteService:
         merged = {record.note_id: record for record in records + public_records}
         entries: list[FeedTimelineEntry] = []
         for record in merged.values():
-            if record.is_deleted or not self._can_view(viewer_id, record):
+            if record.is_deleted or not await self._can_view(viewer_id, record):
                 continue
             entries.append(self._to_timeline_entry(record))
         return entries
 
-    def _can_view(self, viewer_id: str, record: NoteRecord) -> bool:
+    async def _can_view(self, viewer_id: str, record: NoteRecord) -> bool:
         if record.author_id == viewer_id:
             return True
         visibility = record.visibility
@@ -133,8 +120,8 @@ class NoteService:
         if visibility == "public":
             return True
         if visibility == "friends":
-            return viewer_id in self._relations.list_friend_ids(record.author_id)
-        membership = self._relations.get_membership(viewer_id)
+            return viewer_id in await self._relations.list_friend_ids(record.author_id)
+        membership = await self._relations.get_membership(viewer_id)
         if visibility == "church":
             return (
                 record.church_id is not None
@@ -145,8 +132,8 @@ class NoteService:
             return bool(record.group_ids & membership.group_ids)
         return False
 
-    def _to_meditation_note(self, record: NoteRecord) -> MeditationNote:
-        author = self._users.get_user(record.author_id)
+    async def _to_meditation_note(self, record: NoteRecord) -> MeditationNote:
+        author = await self._users.get_user(record.author_id)
         return MeditationNote(
             id=record.note_id,
             content=record.content,
@@ -160,8 +147,8 @@ class NoteService:
             updated_at=record.updated_at,
         )
 
-    def _to_summary(self, record: NoteRecord) -> NoteSummary:
-        author = self._users.get_user(record.author_id)
+    async def _to_summary(self, record: NoteRecord) -> NoteSummary:
+        author = await self._users.get_user(record.author_id)
         excerpt = record.content[: self._settings.note_excerpt_length]
         if len(record.content) > self._settings.note_excerpt_length:
             excerpt += "..."

@@ -23,7 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.example.biblelog.di.LocalBibleLogRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.StreakBadge
 import com.example.biblelog.ui.components.StreakCalendar
 import com.example.biblelog.ui.components.WantedButton
@@ -41,13 +42,15 @@ fun HomeScreen(
     onNavigateToAi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val user by repository.currentUser.collectAsState()
-    val progress = repository.getReadingProgress()
-    val stats = repository.getReadingStats()
-    val readingDates = repository.getReadingDates()
-    val feed by repository.feed.collectAsState()
-    val notifications by repository.notifications.collectAsState()
+    val viewModel: HomeViewModel = viewModel {
+        HomeViewModel(AppContainer.repository)
+    }
+    val user by viewModel.currentUser.collectAsState()
+    val progress by viewModel.readingProgress.collectAsState()
+    val stats by viewModel.readingStats.collectAsState()
+    val readingDates = viewModel.getReadingDates()
+    val feed by viewModel.feed.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
 
     Column(
         modifier = modifier

@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 
 from cassandra.cluster import Session
 
-from shared.db.scylla import scylla_timestamp
+from common.db.scylla import scylla_timestamp
 
-from shared.domain import NoteRecord
-from shared.models import UpsertJournalNoteRequest
+from common.domain import NoteRecord
+from common.models import UpsertJournalNoteRequest
 from note_service.repositories.note import (
     NoteRepository,
     _bucket,

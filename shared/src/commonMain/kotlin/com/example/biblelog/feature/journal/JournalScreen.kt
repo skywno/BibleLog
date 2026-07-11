@@ -22,12 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.data.BibleCatalog
-import com.example.biblelog.di.LocalBibleLogRepository
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.domain.model.BibleReference
 import com.example.biblelog.domain.model.Emotion
 import com.example.biblelog.domain.model.NoteVisibility
@@ -40,7 +40,6 @@ import com.example.biblelog.ui.components.WantedFilterChip
 import com.example.biblelog.ui.components.WantedTextField
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
-import kotlinx.coroutines.launch
 
 @Composable
 fun JournalScreen(
@@ -48,13 +47,19 @@ fun JournalScreen(
     onNavStateChange: (JournalNavState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val viewModel: JournalViewModel = viewModel {
+        JournalViewModel(AppContainer.repository)
+    }
+
     when (navState.route) {
         JournalSubRoute.List -> JournalListScreen(
+            viewModel = viewModel,
             onWrite = { onNavStateChange(JournalNavState(JournalSubRoute.Write)) },
             onEdit = { id -> onNavStateChange(JournalNavState(JournalSubRoute.Write, editingNoteId = id)) },
             modifier = modifier,
         )
         JournalSubRoute.Write -> JournalWriteScreen(
+            viewModel = viewModel,
             noteId = navState.editingNoteId,
             onBack = { onNavStateChange(JournalNavState(JournalSubRoute.List)) },
             modifier = modifier,
@@ -64,12 +69,12 @@ fun JournalScreen(
 
 @Composable
 private fun JournalListScreen(
+    viewModel: JournalViewModel,
     onWrite: () -> Unit,
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val notes by repository.notes.collectAsState()
+    val notes by viewModel.notes.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var filterEmotion by remember { mutableStateOf<Emotion?>(null) }
 
@@ -170,14 +175,13 @@ private fun EmotionFilterRow(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun JournalWriteScreen(
+    viewModel: JournalViewModel,
     noteId: String?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val repository = LocalBibleLogRepository.current
-    val notes by repository.notes.collectAsState()
+    val notes by viewModel.notes.collectAsState()
     val existing = noteId?.let { id -> notes.find { it.id == id } }
-    val scope = rememberCoroutineScope()
 
     var content by remember(existing) { mutableStateOf(existing?.content.orEmpty()) }
     var prayerTopic by remember(existing) { mutableStateOf(existing?.prayerTopic.orEmpty()) }
@@ -284,10 +288,7 @@ private fun JournalWriteScreen(
                 WantedButton(
                     text = "삭제",
                     onClick = {
-                        scope.launch {
-                            repository.deleteNote(noteId)
-                            onBack()
-                        }
+                        viewModel.deleteNote(noteId, onComplete = onBack)
                     },
                     variant = WantedButtonVariant.Outlined,
                     modifier = Modifier.weight(1f),
@@ -296,24 +297,22 @@ private fun JournalWriteScreen(
             WantedButton(
                 text = "저장",
                 onClick = {
-                    scope.launch {
-                        val book = BibleCatalog.books[selectedBookIndex.coerceIn(BibleCatalog.books.indices)]
-                        repository.saveNote(
-                            content = content,
-                            prayerTopic = prayerTopic.ifBlank { null },
-                            emotion = selectedEmotion,
-                            reference = BibleReference(
-                                bookId = book.id,
-                                startChapter = chapter.toIntOrNull() ?: 1,
-                                startVerse = verse.toIntOrNull() ?: 1,
-                                endChapter = chapter.toIntOrNull() ?: 1,
-                                endVerse = verse.toIntOrNull() ?: 1,
-                            ),
-                            visibility = NoteVisibility.entries[visibilityIndex],
-                            noteId = noteId,
-                        )
-                        onBack()
-                    }
+                    val book = BibleCatalog.books[selectedBookIndex.coerceIn(BibleCatalog.books.indices)]
+                    viewModel.saveNote(
+                        content = content,
+                        prayerTopic = prayerTopic.ifBlank { null },
+                        emotion = selectedEmotion,
+                        reference = BibleReference(
+                            bookId = book.id,
+                            startChapter = chapter.toIntOrNull() ?: 1,
+                            startVerse = verse.toIntOrNull() ?: 1,
+                            endChapter = chapter.toIntOrNull() ?: 1,
+                            endVerse = verse.toIntOrNull() ?: 1,
+                        ),
+                        visibility = NoteVisibility.entries[visibilityIndex],
+                        noteId = noteId,
+                        onComplete = onBack,
+                    )
                 },
                 modifier = Modifier.weight(1f),
             )

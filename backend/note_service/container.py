@@ -2,47 +2,36 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import httpx
-
-from feed_service.cache import FeedCacheService
+from common.cache.feed_cache import FeedCacheService
+from common.clients.http import get_async_http_client
+from common.clients.relation import HttpRelationClient
+from common.clients.user import HttpUserClient
+from common.db.redis_client import get_redis
+from common.db.scylla import get_scylla_session
+from common.events.kafka_bus import KafkaEventBus, get_event_bus
 from note_service.repositories.note import NoteRepository
 from note_service.repositories.note_memory import MemoryNoteRepository
 from note_service.repositories.note_scylla import ScyllaNoteRepository
 from note_service.service import NoteService
-from shared.clients.user import HttpRelationRepository, HttpUserRepository
-from shared.config import Settings, get_settings
-from shared.db.scylla import get_scylla_session
-from shared.events.bus import event_bus
-from user_service.repositories.relation import RelationRepository
-from user_service.repositories.user import UserRepository
+from note_service.settings import NoteServiceSettings, get_note_settings
 
 
 @dataclass
 class NoteContainer:
-    settings: Settings
+    settings: NoteServiceSettings
     notes: NoteRepository
-    users: UserRepository
-    relations: RelationRepository
+    users: HttpUserClient
+    relations: HttpRelationClient
     feed_cache: FeedCacheService
     note_service: NoteService
+    event_bus: KafkaEventBus
 
 
 _container: NoteContainer | None = None
 
 
-def _notify_feed_invalidate(settings: Settings) -> None:
-    try:
-        httpx.post(
-            f"{settings.feed_service_url.rstrip('/')}/internal/cache/invalidate-all",
-            headers={"X-Internal-Token": settings.internal_service_token},
-            timeout=5.0,
-        )
-    except httpx.HTTPError:
-        pass
-
-
-def build_note_container(settings: Settings | None = None) -> NoteContainer:
-    settings = settings or get_settings()
+def build_note_container(settings: NoteServiceSettings | None = None) -> NoteContainer:
+    settings = settings or get_note_settings()
     if settings.storage_backend == "scylla":
         session = get_scylla_session(settings)
         if session is None:
@@ -51,15 +40,14 @@ def build_note_container(settings: Settings | None = None) -> NoteContainer:
     else:
         notes = MemoryNoteRepository()
 
-    users: UserRepository = HttpUserRepository(settings)
-    relations: RelationRepository = HttpRelationRepository(settings)
+    get_redis(settings)
+    http_client = get_async_http_client()
+    users = HttpUserClient(settings, http_client)
+    relations = HttpRelationClient(settings, http_client)
     feed_cache = FeedCacheService(settings)
-    note_service = NoteService(notes, users, relations, feed_cache, settings)
+    event_bus = get_event_bus(settings, group_id="note-service")
 
-    event_bus.subscribe("NotePublished", lambda _: _notify_feed_invalidate(settings))
-    event_bus.subscribe("NoteUpdated", lambda _: _notify_feed_invalidate(settings))
-    event_bus.subscribe("NoteDeleted", lambda _: _notify_feed_invalidate(settings))
-
+    note_service = NoteService(notes, users, relations, feed_cache, settings, event_bus)
     return NoteContainer(
         settings=settings,
         notes=notes,
@@ -67,6 +55,7 @@ def build_note_container(settings: Settings | None = None) -> NoteContainer:
         relations=relations,
         feed_cache=feed_cache,
         note_service=note_service,
+        event_bus=event_bus,
     )
 
 

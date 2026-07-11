@@ -1,38 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from note_service.deps import NoteContainerDep
-from shared.internal import verify_internal_token
-from shared.models import (
+from common.domain import FeedTimelineEntry
+from common.internal import verify_internal_token
+from common.models import (
     MeditationNote,
     NotesBatchRequest,
     NotesBatchResponse,
+    RecentNoteEntry,
     RecentNotesByAuthorsRequest,
     RecentNotesByAuthorsResponse,
-    RecentNoteEntry,
 )
-from shared.domain import FeedTimelineEntry
+from note_service.deps import NoteContainerDep
 
 router = APIRouter(prefix="/internal", tags=["internal"], include_in_schema=False)
 
 
 @router.post("/notes/batch", dependencies=[Depends(verify_internal_token)])
-def batch_notes_internal(payload: NotesBatchRequest, container: NoteContainerDep) -> NotesBatchResponse:
-    notes = container.note_service.batch_summaries(payload.viewer_id, payload.note_ids)
+async def batch_notes_internal(payload: NotesBatchRequest, container: NoteContainerDep) -> NotesBatchResponse:
+    notes = await container.note_service.batch_summaries(payload.viewer_id, payload.note_ids)
     return NotesBatchResponse(notes=notes)
 
 
 @router.get("/notes/{note_id}", dependencies=[Depends(verify_internal_token)])
-def get_note_internal(
+async def get_note_internal(
     note_id: str,
     viewer_id: str,
     container: NoteContainerDep,
 ) -> MeditationNote:
-    try:
-        return container.note_service.get_detail(viewer_id, note_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Note not found") from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=403, detail="Forbidden") from exc
+    return await container.note_service.get_detail(viewer_id, note_id)
 
 
 @router.get("/notes/timeline/{note_id}", dependencies=[Depends(verify_internal_token)])
@@ -44,11 +39,11 @@ def timeline_entry_internal(note_id: str, container: NoteContainerDep) -> FeedTi
 
 
 @router.post("/notes/recent-for-feed", dependencies=[Depends(verify_internal_token)])
-def recent_for_feed_internal(
+async def recent_for_feed_internal(
     payload: RecentNotesByAuthorsRequest,
     container: NoteContainerDep,
 ) -> RecentNotesByAuthorsResponse:
-    entries = container.note_service.recent_entries_for_feed(
+    entries = await container.note_service.recent_entries_for_feed(
         payload.viewer_id,
         payload.author_ids,
         since=payload.since,

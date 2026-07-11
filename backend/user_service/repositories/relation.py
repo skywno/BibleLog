@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from shared.domain import UserMembership
+from common.domain import UserMembership
 
 
 class RelationRepository(ABC):

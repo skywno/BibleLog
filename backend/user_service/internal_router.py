@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from shared.internal import verify_internal_token
-from shared.models import UserProfile
+from common.internal import verify_internal_token
+from common.models import UserProfile
 from user_service.deps import UserContainerDep
 
 router = APIRouter(prefix="/internal", tags=["internal"], include_in_schema=False)

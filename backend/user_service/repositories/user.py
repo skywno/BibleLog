@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import UTC, datetime
 
-from shared.models import BibleReference, SendAiMessageResponse, UserProfile
+from common.models import UserProfile
 
 
 class UserRepository(ABC):
@@ -32,25 +31,3 @@ class UserRepository(ABC):
 
     @abstractmethod
     def pop_oauth_state(self, state: str) -> str | None: ...
-
-    @abstractmethod
-    def create_ai_conversation(self, user_id: str, mode: str = "chat") -> dict: ...
-
-    @abstractmethod
-    def list_ai_conversations(self, user_id: str) -> list[dict]: ...
-
-    @abstractmethod
-    def list_ai_messages(self, conversation_id: str) -> list[dict]: ...
-
-    @abstractmethod
-    def append_ai_messages(
-        self,
-        conversation_id: str,
-        user_content: str,
-        assistant_content: str,
-        suggested: BibleReference | None,
-        provider: str,
-    ) -> SendAiMessageResponse: ...
-
-    @abstractmethod
-    def conversation_exists(self, conversation_id: str) -> bool: ...

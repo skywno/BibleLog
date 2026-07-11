@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from shared.domain import NoteRecord
-from shared.models import UpsertJournalNoteRequest
+from common.domain import NoteRecord
+from common.models import UpsertJournalNoteRequest
 from note_service.repositories.note import NoteRepository, _build_record
 
 

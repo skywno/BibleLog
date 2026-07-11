@@ -17,7 +17,7 @@ BibleLog는 성경 읽기 습관 형성과 신앙 공동체 SNS를 결합한 서
 ```
 backend/
 ├── traefik/              # API Gateway — Traefik dynamic routing
-├── shared/               # 공통: config, models, domain, db clients, events, JWT
+├── common/               # 공통: config, models, domain, db clients, Kafka events, JWT, contracts
 ├── user_service/         # Auth, Users, Relation (PostgreSQL)
 ├── note_service/         # Journal API, Note CRUD (ScyllaDB)
 ├── feed_service/         # Feed API, Redis ZSET cache, cursor pagination
@@ -41,7 +41,7 @@ backend/
 
 **Traefik 역할:** 클라이언트는 `http://localhost:8000` 단일 URL을 사용한다. path prefix 기반으로 각 서비스에 프록시한다. `/internal/*`는 public 라우트에 포함하지 않는다.
 
-서비스 간 통신은 `shared/clients/` HTTP 클라이언트 + `/internal/*` API(`X-Internal-Token`)를 사용한다.
+서비스 간 통신은 `common/clients/` HTTP 클라이언트 + `/internal/*` API(`X-Internal-Token`)를 사용한다. 캐시 무효화는 **Kafka** 이벤트 버스(`biblelog.events`)로 처리한다.
 
 ### 1.3 Docker Compose 배포
 
@@ -659,7 +659,7 @@ sequenceDiagram
 | `social_service/` | `service.py`, `repositories/` | (Feed enrichment) |
 | `reading_service/` | `service.py`, `router.py`, `repositories/` | `/reading/*` |
 | `ai_service/` | `providers.py`, `router.py` | `/ai/*` |
-| `shared/` | `models.py`, `config.py`, `db/`, `events/` | — |
+| `common/` | `models.py`, `config.py`, `db/`, `events/kafka_bus.py`, `contracts/` | — |
 
 OpenAPI 계약 [`openapi/biblelog-api.yaml`](./openapi/biblelog-api.yaml). Feed 응답: `FeedPageResponse` (`items`, `next_cursor`, `has_more`).
 

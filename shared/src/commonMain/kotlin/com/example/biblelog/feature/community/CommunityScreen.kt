@@ -12,20 +12,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.data.BibleCatalog
-import com.example.biblelog.di.LocalBibleLogRepository
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.domain.model.FaithReaction
 import com.example.biblelog.domain.model.FeedFilter
 import com.example.biblelog.domain.model.FeedSort
@@ -35,15 +38,18 @@ import com.example.biblelog.ui.components.WantedFilterChip
 import com.example.biblelog.ui.components.WantedSegmentedControl
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
-import kotlinx.coroutines.launch
 
 @Composable
 fun CommunityScreen(modifier: Modifier = Modifier) {
-    val repository = LocalBibleLogRepository.current
-    val feed by repository.feed.collectAsState()
+    val viewModel: CommunityViewModel = viewModel {
+        CommunityViewModel(AppContainer.repository)
+    }
+    val feed by viewModel.feed.collectAsState()
+    val feedHasMore by viewModel.feedHasMore.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     var filterIndex by remember { mutableIntStateOf(0) }
     var sortIndex by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     val filters = listOf(
         FeedFilter.ALL to "전체",
@@ -55,7 +61,20 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
     val feedSort = if (sortIndex == 1) FeedSort.POPULAR else FeedSort.LATEST
 
     LaunchedEffect(feedFilter, feedSort) {
-        repository.loadFeed(feedFilter, feedSort)
+        viewModel.loadFeed(feedFilter, feedSort)
+    }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= feed.size - 3 && feedHasMore && !isLoadingMore && feed.isNotEmpty()
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            viewModel.loadMore()
+        }
     }
 
     Column(
@@ -87,16 +106,30 @@ fun CommunityScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(WantedSpacing.Base.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(WantedSpacing.Base.dp)) {
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(WantedSpacing.Base.dp),
+        ) {
             items(feed, key = { it.note.id }) { item ->
                 FeedCard(
                     item = item,
                     onReaction = { reaction ->
-                        scope.launch {
-                            repository.toggleReaction(item.note.id, reaction)
-                        }
+                        viewModel.toggleReaction(item.note.id, reaction)
                     },
                 )
+            }
+            if (isLoadingMore) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            color = WantedColors.Primary,
+                            modifier = Modifier.padding(WantedSpacing.Base.dp),
+                        )
+                    }
+                }
             }
         }
     }

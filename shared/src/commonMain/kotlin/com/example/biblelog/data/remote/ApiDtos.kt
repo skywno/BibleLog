@@ -12,6 +12,11 @@ data class ApiUserProfileDto(
 )
 
 @Serializable
+data class ApiRefreshTokenRequestDto(
+    @SerialName("refresh_token") val refreshToken: String,
+)
+
+@Serializable
 data class ApiAuthTokenResponseDto(
     @SerialName("access_token") val accessToken: String,
     @SerialName("refresh_token") val refreshToken: String,

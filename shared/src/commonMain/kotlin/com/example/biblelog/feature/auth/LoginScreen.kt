@@ -12,37 +12,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.biblelog.data.auth.AuthRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.biblelog.data.auth.OAuthProvider
-import com.example.biblelog.di.LocalAuthRepository
+import com.example.biblelog.di.AppContainer
 import com.example.biblelog.ui.components.WantedButton
 import com.example.biblelog.ui.components.WantedButtonVariant
 import com.example.biblelog.ui.theme.WantedColors
 import com.example.biblelog.ui.theme.WantedSpacing
-import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    onLoggedIn: () -> Unit = {},
 ) {
-    val authRepository = LocalAuthRepository.current
-    val session by authRepository.session.collectAsState()
-    val scope = rememberCoroutineScope()
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-
-    if (session != null) {
-        onLoggedIn()
+    val viewModel: LoginViewModel = viewModel {
+        LoginViewModel(AppContainer.authRepository, AppContainer.sessionCoordinator)
     }
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Column(
         modifier = modifier
@@ -67,19 +57,7 @@ fun LoginScreen(
         OAuthProvider.entries.forEach { provider ->
             WantedButton(
                 text = "${provider.label}로 계속하기",
-                onClick = {
-                    scope.launch {
-                        isLoading = true
-                        errorMessage = null
-                        authRepository.startOAuth(provider).fold(
-                            onSuccess = { },
-                            onFailure = { error ->
-                                errorMessage = error.message ?: "OAuth 시작에 실패했습니다."
-                            },
-                        )
-                        isLoading = false
-                    }
-                },
+                onClick = { viewModel.startOAuth(provider) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading,
                 variant = if (provider == OAuthProvider.Google) {
@@ -95,19 +73,7 @@ fun LoginScreen(
 
         WantedButton(
             text = "개발 서버로 로그인",
-            onClick = {
-                scope.launch {
-                    isLoading = true
-                    errorMessage = null
-                    authRepository.devLogin().fold(
-                        onSuccess = { onLoggedIn() },
-                        onFailure = { error ->
-                            errorMessage = error.message ?: "로그인에 실패했습니다. FastAPI 서버가 실행 중인지 확인해 주세요."
-                        },
-                    )
-                    isLoading = false
-                }
-            },
+            onClick = { viewModel.devLogin() },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading,
             variant = WantedButtonVariant.Secondary,

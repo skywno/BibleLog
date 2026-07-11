@@ -9,7 +9,7 @@ RUN apt-get update \
 COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY shared ./shared
+COPY common ./common
 COPY schema ./schema
 COPY user_service ./user_service
 

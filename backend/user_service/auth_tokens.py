@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 
 from jose import jwt
 
-from shared.auth.jwt import create_access_token
-from shared.config import Settings
+from common.auth.jwt import create_access_token
+from common.config import Settings
 from user_service.repositories.user import UserRepository
 
 

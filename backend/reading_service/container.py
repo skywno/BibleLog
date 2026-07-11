@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from common.db.scylla import get_scylla_session
 from reading_service.repositories.reading import ReadingRepository
 from reading_service.repositories.reading_memory import MemoryReadingRepository
 from reading_service.repositories.reading_scylla import ScyllaReadingRepository
 from reading_service.service import ReadingService
-from shared.config import Settings, get_settings
-from shared.db.scylla import get_scylla_session
+from reading_service.settings import ReadingServiceSettings, get_reading_settings
 
 
 @dataclass
 class ReadingContainer:
-    settings: Settings
+    settings: ReadingServiceSettings
     reading: ReadingRepository
     reading_service: ReadingService
 
@@ -20,8 +20,8 @@ class ReadingContainer:
 _container: ReadingContainer | None = None
 
 
-def build_reading_container(settings: Settings | None = None) -> ReadingContainer:
-    settings = settings or get_settings()
+def build_reading_container(settings: ReadingServiceSettings | None = None) -> ReadingContainer:
+    settings = settings or get_reading_settings()
     if settings.storage_backend == "scylla":
         session = get_scylla_session(settings)
         if session is None:

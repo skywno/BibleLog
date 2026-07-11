@@ -4,15 +4,15 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
+from common.app_factory import create_service_app
+from common.db.scylla import close_scylla
 from reading_service.container import build_reading_container, reset_reading_container, set_reading_container
 from reading_service.router import router as reading_router
-from shared.config import get_settings
-from shared.db.scylla import close_scylla
+from reading_service.settings import get_reading_settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
+settings = get_reading_settings()
 
 
 @asynccontextmanager
@@ -25,17 +25,10 @@ async def lifespan(_: FastAPI):
     reset_reading_container()
 
 
-app = FastAPI(title="BibleLog Reading Service", version="0.4.0", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = create_service_app(
+    title="BibleLog Reading Service",
+    version="0.4.0",
+    service_name="reading",
+    routers=[reading_router],
+    lifespan=lifespan,
 )
-app.include_router(reading_router)
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "reading"}
