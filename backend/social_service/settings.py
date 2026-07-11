@@ -11,6 +11,7 @@ class SocialServiceSettings(BaseServiceSettings):
     scylla_hosts: str = "127.0.0.1"
     scylla_port: int = 9042
     scylla_keyspace: str = "biblelog"
+    user_service_url: str = "http://user-service:8001"
 
 
 @lru_cache

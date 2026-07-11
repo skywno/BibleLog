@@ -22,4 +22,5 @@ class NoteReader(Protocol):
         since_days: int = 30,
         since: datetime | None = None,
         limit_per_author: int = 10,
+        include_global_public: bool = False,
     ) -> list[FeedTimelineEntry]: ...

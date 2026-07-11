@@ -157,6 +157,7 @@ class RecentNotesByAuthorsRequest(BaseModel):
     viewer_id: str
     since: datetime | None = None
     limit_per_author: int = 10
+    include_global_public: bool = False
 
 
 class RecentNoteEntry(BaseModel):

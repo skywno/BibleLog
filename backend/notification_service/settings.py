@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from common.settings.base import BaseServiceSettings
 
 
 class NotificationServiceSettings(BaseServiceSettings):
+    storage_backend: Literal["memory", "scylla"] = "memory"
     postgres_url: str = "postgresql://biblelog:biblelog@localhost:5432/biblelog"
     postgres_enabled: bool = True
     user_service_url: str = "http://user-service:8001"

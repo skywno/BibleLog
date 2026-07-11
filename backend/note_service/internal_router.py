@@ -48,6 +48,7 @@ async def recent_for_feed_internal(
         payload.author_ids,
         since=payload.since,
         limit_per_author=payload.limit_per_author,
+        include_global_public=payload.include_global_public,
     )
     return RecentNotesByAuthorsResponse(
         entries=[

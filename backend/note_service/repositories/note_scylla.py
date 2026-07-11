@@ -147,7 +147,12 @@ class ScyllaNoteRepository(NoteRepository):
                 (author_id, limit_per_author),
             )
             for row in rows:
-                record = _record_from_row(row._asdict())
+                data = row._asdict()
+                data["created_at"] = scylla_timestamp(data["created_at"])
+                data["updated_at"] = scylla_timestamp(data["updated_at"])
+                if data.get("deleted_at") is not None:
+                    data["deleted_at"] = scylla_timestamp(data["deleted_at"])
+                record = _record_from_row(data)
                 if record.is_deleted:
                     continue
                 if since and record.created_at < since:

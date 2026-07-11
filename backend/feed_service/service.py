@@ -137,7 +137,11 @@ class FeedService:
     async def _assemble_entries(self, viewer_id: str, feed_filter: FeedFilter) -> list[FeedTimelineEntry]:
         author_ids = await self._collect_author_ids(viewer_id, feed_filter)
         author_ids = sorted(set(author_ids) - {viewer_id})
-        return await self._notes.recent_entries_for_feed(viewer_id, author_ids)
+        return await self._notes.recent_entries_for_feed(
+            viewer_id,
+            author_ids,
+            include_global_public=feed_filter == "all",
+        )
 
     async def _collect_author_ids(self, viewer_id: str, feed_filter: FeedFilter) -> list[str]:
         membership = await self._relations.get_membership(viewer_id)
@@ -159,10 +163,11 @@ class FeedService:
                 return []
             return await self._relations.list_church_member_ids(membership.church_id)
 
+        following_ids = await self._relations.list_following_ids(viewer_id)
         group_member_ids: list[str] = []
         if membership.group_ids:
             group_member_ids = await self._relations.list_group_member_ids(membership.group_ids)
         church_member_ids: list[str] = []
         if membership.church_id:
             church_member_ids = await self._relations.list_church_member_ids(membership.church_id)
-        return friend_ids + group_member_ids + church_member_ids
+        return list({*friend_ids, *group_member_ids, *church_member_ids, *following_ids})

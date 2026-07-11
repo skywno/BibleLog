@@ -107,13 +107,22 @@ class NoteService:
         since_days: int = 30,
         since: datetime | None = None,
         limit_per_author: int = 10,
+        include_global_public: bool = False,
     ) -> list[FeedTimelineEntry]:
         effective_since = since if since is not None else datetime.now(UTC) - timedelta(days=since_days)
-        records = self._notes.list_recent_by_authors(author_ids, effective_since, limit_per_author)
-        public_records = self._notes.list_public_since(effective_since)
-        merged = {record.note_id: record for record in records + public_records}
+        if not author_ids and not include_global_public:
+            return []
+
+        records: list[NoteRecord] = []
+        if author_ids:
+            records = self._notes.list_recent_by_authors(author_ids, effective_since, limit_per_author)
+        if include_global_public:
+            records = list(
+                {record.note_id: record for record in records + self._notes.list_public_since(effective_since)}.values()
+            )
+
         entries: list[FeedTimelineEntry] = []
-        for record in merged.values():
+        for record in records:
             if record.is_deleted or not await self._can_view(viewer_id, record):
                 continue
             entries.append(self._to_timeline_entry(record))

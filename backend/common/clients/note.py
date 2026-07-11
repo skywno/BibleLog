@@ -26,6 +26,23 @@ class HttpNoteClient(NoteReader):
     def _headers(self) -> dict[str, str]:
         return {"X-Internal-Token": self._token}
 
+    @staticmethod
+    def _timeline_entry_from_json(data: dict) -> FeedTimelineEntry:
+        group_ids = data.get("group_ids") or []
+        if not isinstance(group_ids, set):
+            group_ids = set(group_ids)
+        created_at = data["created_at"]
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        return FeedTimelineEntry(
+            note_id=data["note_id"],
+            author_id=data["author_id"],
+            created_at=created_at,
+            visibility=data["visibility"],
+            church_id=data.get("church_id"),
+            group_ids=group_ids,
+        )
+
     async def get_detail(self, viewer_id: str, note_id: str) -> MeditationNote:
         response = await self._client.get(
             f"{self._base}/internal/notes/{note_id}",
@@ -57,7 +74,7 @@ class HttpNoteClient(NoteReader):
         if response.status_code == 404:
             return None
         response.raise_for_status()
-        return FeedTimelineEntry.model_validate(response.json())
+        return self._timeline_entry_from_json(response.json())
 
     async def recent_entries_for_feed(
         self,
@@ -66,6 +83,7 @@ class HttpNoteClient(NoteReader):
         since_days: int = 30,
         since: datetime | None = None,
         limit_per_author: int = 10,
+        include_global_public: bool = False,
     ) -> list[FeedTimelineEntry]:
         effective_since = since if since is not None else datetime.now(UTC) - timedelta(days=since_days)
         body = RecentNotesByAuthorsRequest(
@@ -73,6 +91,7 @@ class HttpNoteClient(NoteReader):
             viewer_id=viewer_id,
             since=effective_since,
             limit_per_author=limit_per_author,
+            include_global_public=include_global_public,
         )
         response = await self._client.post(
             f"{self._base}/internal/notes/recent-for-feed",
